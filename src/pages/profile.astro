@@ -1,5 +1,6 @@
 ---
 export const prerender = false;
+import SiteEffects from '../components/SiteEffects.astro';
 import ProfileForm from '../components/ProfileForm';
 import { currentUser, database } from './invite/_check';
 
@@ -58,7 +59,8 @@ const userName = String(user.name ?? '');
     </style>
   </head>
   <body>
-    <main>
+    <SiteEffects />
+    <main class="relative z-10">
       <nav><a href="/">← Події</a><a href="/rules">Правила</a><a href="/privacy">Конфіденційність</a></nav>
       <h1>Мій профіль</h1>
       <p class="lead">Вітаємо, {escapeHtml(userName)}! Тут ви керуєте своїми даними.</p>

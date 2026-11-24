@@ -2,6 +2,10 @@
 export const prerender = false;
 import '../styles/global.css';
 import { getDb } from '../lib/db';
+import SiteEffects from '../components/SiteEffects.astro';
+import ClickSpark from '../components/ClickSpark';
+import FadeContent from '../components/FadeContent';
+import AnimatedContent from '../components/AnimatedContent';
 
 /**
  * Головна: майбутні публічні події + пошук за назвою ?q=.
@@ -57,6 +61,8 @@ const formatDate = (iso: string) => fmt.format(new Date(iso));
     <title>Тусовка — події</title>
   </head>
   <body class="min-h-screen bg-background text-foreground">
+    <SiteEffects />
+    <div class="relative z-10">
     <header class="border-b border-border">
       <nav class="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-4 py-3 text-sm" style="white-space: nowrap;">
         <a href="/" class="font-semibold">Тусовка</a>
@@ -67,9 +73,21 @@ const formatDate = (iso: string) => fmt.format(new Date(iso));
       </nav>
     </header>
 
+    <ClickSpark
+      client:load
+      sparkColor={['#7170ff', '#828fff', '#f7f8f8']}
+      sparkSize={8}
+      sparkRadius={28}
+      sparkCount={8}
+      duration={380}
+      easing="ease-out"
+      layer="front"
+    >
     <main class="mx-auto max-w-5xl px-4 py-8">
-      <h1 class="text-3xl font-semibold tracking-tight">Майбутні події</h1>
-      <p class="mt-2 text-sm text-muted-foreground">Час указано за Києвом.</p>
+      <FadeContent client:load trigger="mount" blur={false} duration={700} initialOpacity={0} effect="fade">
+        <h1 class="hero-title text-4xl font-medium tracking-tight sm:text-5xl">Майбутні події</h1>
+        <p class="mt-2 text-sm text-muted-foreground">Час указано за Києвом.</p>
+      </FadeContent>
 
       <form method="get" action="/" class="mt-6 flex gap-2" role="search">
         <input
@@ -92,10 +110,11 @@ const formatDate = (iso: string) => fmt.format(new Date(iso));
           Подій поки немає. Створіть першу!
         </p>
       ) : (
+        <AnimatedContent client:load direction="vertical" distance={28} duration={0.6} trigger="mount" stagger={0.06}>
         <ul class="mt-8 grid gap-4 sm:grid-cols-2">
           {
             events.map((event) => (
-              <li class="overflow-hidden rounded-xl border border-border bg-card">
+              <li class="card-surface overflow-hidden">
                 <a href={`/events/${event.id}`} class="block p-5 hover:bg-muted/40">
                   {event.has_cover ? (
                     <img
@@ -118,7 +137,10 @@ const formatDate = (iso: string) => fmt.format(new Date(iso));
             ))
           }
         </ul>
+        </AnimatedContent>
       )}
     </main>
+    </ClickSpark>
+    </div>
   </body>
 </html>

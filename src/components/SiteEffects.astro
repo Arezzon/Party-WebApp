@@ -1,0 +1,51 @@
+---
+import Aurora from './Aurora';
+import Noise from './Noise';
+import DotGrid from './DotGrid';
+---
+
+<!-- React Bits: живий фон, сітка й зерно. Шари не ловлять кліки. -->
+<div class="effects-glow pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+  <div class="absolute inset-x-0 top-0 h-[420px]">
+    <Aurora
+      client:load
+      colorStops={['#08090a', '#141632', '#2a2350', '#08090a']}
+      amplitude={0.6}
+      blend={0.5}
+      speed={0.35}
+      height={420}
+      opacity={0.55}
+      layers={3}
+      direction="top"
+      mouseInteraction={false}
+    />
+  </div>
+  <div class="absolute inset-0">
+    <DotGrid
+      client:load
+      dotSize={2}
+      gap={26}
+      baseColor="rgba(255,255,255,0.07)"
+      activeColor="#7170ff"
+      proximity={130}
+      shockRadius={220}
+      shockStrength={4}
+      fade={1}
+      opacity={0.45}
+      shape="circle"
+    />
+  </div>
+  <Noise
+    client:load
+    opacity={0.05}
+    size={140}
+    fps={12}
+    contrast={130}
+    dust={0.4}
+    scratches={0}
+    scanlines={0}
+    flicker={0.15}
+    fixed
+    zIndex={0}
+  />
+</div>

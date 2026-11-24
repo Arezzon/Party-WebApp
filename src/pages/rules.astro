@@ -1,5 +1,6 @@
 ---
 export const prerender = false;
+import SiteEffects from '../components/SiteEffects.astro';
 const title = 'Правила сервісу — Тусовка';
 ---
 
@@ -26,7 +27,8 @@ const title = 'Правила сервісу — Тусовка';
     </style>
   </head>
   <body>
-    <main>
+    <SiteEffects />
+    <main class="relative z-10">
       <nav><a href="/">← Події</a><a href="/privacy">Конфіденційність</a><a href="/profile">Профіль</a></nav>
       <h1>Правила сервісу</h1>
       <p>«Тусовка» — місце для безпечних зустрічей. Користуючись сервісом, ви погоджуєтеся з цими правилами.</p>
