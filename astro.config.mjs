@@ -10,6 +10,12 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   integrations: [react()],
 
+  // Origin is enforced in src/middleware.ts (400 on mismatch), including
+  // behind reverse proxies/tunnels where Astro cannot see the public origin.
+  security: {
+    checkOrigin: false
+  },
+
   adapter: node({
     mode: 'standalone'
   }),
