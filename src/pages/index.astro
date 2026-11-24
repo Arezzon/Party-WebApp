@@ -8,6 +8,10 @@ import FadeContent from '../components/FadeContent';
 import AnimatedContent from '../components/AnimatedContent';
 import NeonLogo from '../components/NeonLogo';
 import HoloMosaic from '../components/HoloMosaic';
+import SplitText from '../components/SplitText';
+import DecryptedText from '../components/DecryptedText';
+import GlitchLabel from '../components/GlitchLabel';
+import ShinyText from '../components/ShinyText';
 
 /**
  * Головна: майбутні публічні події + пошук за назвою ?q=.
@@ -107,8 +111,41 @@ const formatDate = (iso: string) => fmt.format(new Date(iso));
     >
     <main class="mx-auto max-w-5xl px-4 py-8">
       <FadeContent client:load trigger="mount" blur={false} duration={700} initialOpacity={0} effect="fade">
-        <h1 class="hero-title text-4xl font-medium tracking-tight sm:text-5xl">Майбутні події</h1>
-        <p class="mt-2 text-sm text-muted-foreground">Час указано за Києвом.</p>
+        <div class="hero-split">
+          <SplitText
+            client:load
+            text="Майбутні події"
+            tag="h1"
+            splitType="chars"
+            effect="blur"
+            delay={38}
+            duration={1.1}
+            ease="power3.out"
+            staggerFrom="center"
+            textAlign="left"
+            trigger="load"
+            color="#f7f8f8"
+            accentColor="#8b8cff"
+            hoverEffect="lift"
+            className="hero-title text-4xl font-medium tracking-tight sm:text-5xl"
+          />
+        </div>
+        <p class="mt-2 text-sm text-muted-foreground">
+          <DecryptedText
+            client:load
+            text="Час указано за Києвом."
+            speed={28}
+            maxIterations={10}
+            sequential
+            revealDirection="start"
+            animateOn="view"
+            effect="scramble"
+            scrambleColor="#7170ff"
+            useOriginalCharsOnly={false}
+            characters="АБВГДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ0123456789±§@#$%"
+            parentClassName="inline"
+          />
+        </p>
       </FadeContent>
 
       <form method="get" action="/" class="mt-6 flex gap-2" role="search">
@@ -125,7 +162,12 @@ const formatDate = (iso: string) => fmt.format(new Date(iso));
         </button>
       </form>
 
-      {q ? <p class="mt-4 text-sm text-muted-foreground">Результати пошуку: «{q}»</p> : null}
+      {q ? (
+        <p class="mt-4 text-sm text-muted-foreground">
+          Результати пошуку:{' '}
+          <GlitchLabel client:load text={`«${q}»`} />
+        </p>
+      ) : null}
 
       {!q ? (
         <section class="relative mt-7 h-44 overflow-hidden rounded-xl border border-border" aria-label="Нові ефекти бібліотеки">
@@ -149,7 +191,22 @@ const formatDate = (iso: string) => fmt.format(new Date(iso));
             flipOnClick
           />
           <div class="pointer-events-none absolute inset-0 flex flex-col justify-center gap-2 bg-gradient-to-r from-background/80 via-background/30 to-transparent p-6">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Нове в бібліотеці · Holo Mosaic</p>
+            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              <ShinyText
+                client:load
+                text="Нове в бібліотеці · Holo Mosaic"
+                color="#8a8f98"
+                shineColor="#c9caff"
+                speed={2.6}
+                angle={-18}
+                shineWidth={2.2}
+                softness={0.6}
+                bands={2}
+                glow={0.35}
+                trigger="loop"
+                easing="smooth"
+              />
+            </p>
             <h2 class="text-2xl font-medium tracking-tight">Світло, яке не набридає</h2>
             <p class="max-w-sm text-sm text-muted-foreground">Голограма реагує на курсор і кліки — просто як твої наступні події.</p>
           </div>
