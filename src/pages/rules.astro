@@ -1,103 +1,69 @@
 ---
 export const prerender = false;
-import '../styles/global.css';
-import SiteEffects from '../components/SiteEffects.astro';
+import Layout from '../layouts/Layout.astro';
+import HeroText from '../components/bits/HeroText';
 import NeonGlyphs from '../components/NeonGlyphs';
-const title = 'Правила сервісу — Тусовка';
 ---
 
-<!doctype html>
-<html lang="uk">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="referrer" content="no-referrer" />
-    <title>{title}</title>
-    <style>
-      :root { color-scheme: dark; }
-      body { margin: 0; background: #0b0d12; color: #e6e8ee; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.6; }
-      main { max-width: 760px; margin: 0 auto; padding: 32px 20px 64px; }
-      h1 { font-size: 1.9rem; letter-spacing: -0.02em; margin: 0 0 8px; }
-      h2 { font-size: 1.15rem; margin: 28px 0 8px; }
-      p, li { color: #c7ccd8; }
-      ul { padding-left: 20px; }
-      li { margin: 6px 0; overflow-wrap: anywhere; }
-      nav { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
-      nav a { color: #8ab4ff; text-decoration: none; }
-      nav a:hover { text-decoration: underline; }
-      .note { border: 1px solid #262b36; background: #12151d; border-radius: 12px; padding: 14px 16px; }
-      .rules-glyphs {
-        height: 150px;
-        margin: 18px 0 26px;
-        border: 1px solid #262b36;
-        border-radius: 14px;
-        overflow: hidden;
-        background: #0b0d12;
-      }
-    </style>
-  </head>
-  <body>
-    <SiteEffects />
-    <main class="relative z-10">
-      <nav><a href="/">← Події</a><a href="/privacy">Конфіденційність</a><a href="/profile">Профіль</a></nav>
-      <div class="rules-glyphs" aria-hidden="true">
-        <NeonGlyphs
-          client:load
-          colors={['#5e6ad2', '#7170ff', '#c7ccd8']}
-          characters="ТУСОВКА01{}/\"
-          fontFamily="system-ui, sans-serif"
-          cellSize={18}
-          depth={10}
-          tilt={22}
-          speed={0.18}
-          density={0.35}
-          glow={0.7}
-          flicker={0.3}
-          scramble={0.25}
-          opacity={0.32}
-          fade={0.65}
-          intro
-          mouseInteraction={false}
-          burstOnClick={false}
-        />
-      </div>
-      <h1>Правила сервісу</h1>
-      <p>«Тусовка» — місце для безпечних зустрічей. Користуючись сервісом, ви погоджуєтеся з цими правилами.</p>
+<Layout title="Правила сервісу — Тусовка">
+  <div class="mx-auto flex max-w-3xl flex-col gap-6">
+    <div class="h-36 overflow-hidden rounded-xl border border-border" aria-hidden="true">
+      <NeonGlyphs
+        client:load
+        colors={['#5e6ad2', '#7170ff', '#c7ccd8']}
+        characters="ТУСОВКА01{}/\"
+        fontFamily="system-ui, sans-serif"
+        cellSize={18}
+        depth={10}
+        tilt={22}
+        speed={0.18}
+        density={0.35}
+        glow={0.7}
+        flicker={0.3}
+        scramble={0.25}
+        opacity={0.32}
+        fade={0.65}
+        intro
+        mouseInteraction={false}
+        burstOnClick={false}
+      />
+    </div>
 
-      <section>
-        <h2>1. Повага до учасників</h2>
-        <ul>
-          <li>Не публікуйте образи, погрози, дискримінацію, спам і рекламу.</li>
-          <li>Не видавайте себе за інших людей і не поширюйте чужі персональні дані.</li>
-          <li>Коментарі мають стосуватися події.</li>
-        </ul>
-      </section>
+    <HeroText client:load title="Правила сервісу" subtitle="«Тусовка» — місце для безпечних зустрічей." />
 
-      <section>
-        <h2>2. Події та записи</h2>
-        <ul>
-          <li>Вказуйте правдиву дату, опис і кількість місць.</li>
-          <li>Приватні події доступні лише за посиланням-запрошенням; не поширюйте його без згоди автора.</li>
-          <li>Скасовуйте запис, якщо не можете прийти, щоб місце дісталося іншому.</li>
-        </ul>
-      </section>
+    <section class="flex flex-col gap-2">
+      <h2 class="text-lg font-medium">1. Повага до учасників</h2>
+      <ul class="list-disc pl-5 text-sm text-muted-foreground">
+        <li>Не публікуйте образи, погрози, дискримінацію, спам і рекламу.</li>
+        <li>Не видавайте себе за інших людей і не поширюйте чужі персональні дані.</li>
+        <li>Коментарі мають стосуватися події.</li>
+      </ul>
+    </section>
 
-      <section>
-        <h2>3. Скарги й видалення коментарів</h2>
-        <p class="note">
-          Якщо коментар порушує правила, натисніть кнопку «Поскаржитися» на сторінці події та вкажіть причину.
-          Автор коментаря й автор події можуть видалити коментар. Скарги розглядає модератор сервісу.
-        </p>
-      </section>
+    <section class="flex flex-col gap-2">
+      <h2 class="text-lg font-medium">2. Події та записи</h2>
+      <ul class="list-disc pl-5 text-sm text-muted-foreground">
+        <li>Вказуйте правдиву дату, опис і кількість місць.</li>
+        <li>Приватні події доступні лише за посиланням-запрошенням; не поширюйте його без згоди автора.</li>
+        <li>Скасовуйте запис, якщо не можете прийти, щоб місце дісталося іншому.</li>
+      </ul>
+    </section>
 
-      <section>
-        <h2>4. Ваші дані</h2>
-        <p>
-          Ви можете змінити ім’я або видалити акаунт у <a href="/profile">профілі</a>.
-          Після видалення сесії, події та записи знищуються, а коментарі знеособлюються.
-          Детальніше — у <a href="/privacy">політиці конфіденційності</a>.
-        </p>
-      </section>
-    </main>
-  </body>
-</html>
+    <section class="flex flex-col gap-2">
+      <h2 class="text-lg font-medium">3. Скарги й видалення коментарів</h2>
+      <p class="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+        Якщо коментар порушує правила, натисніть кнопку «Поскаржитися» на сторінці події та вкажіть причину.
+        Автор коментаря й автор події можуть видалити коментар. Скарги розглядає модератор сервісу.
+      </p>
+    </section>
+
+    <section class="flex flex-col gap-2">
+      <h2 class="text-lg font-medium">4. Ваші дані</h2>
+      <p class="text-sm text-muted-foreground">
+        Ви можете змінити ім’я або видалити акаунт у <a href="/profile" class="underline">профілі</a>.
+        Після видалення сесії, події та записи знищуються, а коментарі знеособлюються.
+        Детальніше — у <a href="/privacy" class="underline">політиці конфіденційності</a>.
+      </p>
+    </section>
+  </div>
+</Layout>

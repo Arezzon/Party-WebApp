@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import { Button } from './ui/button';
+import SpecularButton from './SpecularButton';
 import AnimatedContent from './AnimatedContent';
 
 export interface EventFormInitial {
@@ -198,9 +198,9 @@ export default function EventForm({
           )}
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <Button type="submit" size="lg">
+            <SpecularButton type="submit" size="lg" tint="#7170ff" textColor="#ffffff">
               {submitLabel ?? (isEdit ? 'Зберегти зміни' : 'Створити подію')}
-            </Button>
+            </SpecularButton>
             <a href={isEdit && initial.id ? `/events/${initial.id}` : '/'} className="text-sm text-muted-foreground underline underline-offset-4">
               Скасувати
             </a>

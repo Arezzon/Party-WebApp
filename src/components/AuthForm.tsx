@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Button } from './ui/button';
+import SpecularButton from './SpecularButton';
 import AnimatedContent from './AnimatedContent';
 
 interface AuthFormProps {
@@ -100,9 +100,9 @@ export default function AuthForm({ mode = 'login', error = '', notice = '', next
           </label>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Button type="submit" size="lg">
+            <SpecularButton type="submit" size="lg" tint="#7170ff" textColor="#ffffff">
               {isRegister ? 'Зареєструватися' : 'Увійти'}
-            </Button>
+            </SpecularButton>
             {isRegister && (
               <a href="/privacy" className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
                 Політика конфіденційності

@@ -5,6 +5,7 @@ import { requireUser } from '../../../lib/auth.ts';
 import { getDb } from '../../../lib/db.ts';
 import { canViewEventFromRequest, getAttendees, getEvent, rsvpCount } from '../../../lib/events.ts';
 import { formatKyiv } from '../../../lib/timezone.ts';
+import EventDetailBits from '../../../components/bits/EventDetailBits';
 
 const id = Astro.params.id ?? '';
 const event = getEvent(id);
@@ -19,7 +20,6 @@ const user = requireUser(Astro);
 const isAuthor = Boolean(user && user.id === event.authorId);
 const attendees = getAttendees(id);
 const left = Math.max(0, event.places - rsvpCount(id));
-const dateLabel = formatKyiv(event.startsAt);
 
 let going = false;
 if (user) {
@@ -33,75 +33,20 @@ const idempotencyKey = typeof crypto !== 'undefined' && typeof crypto.randomUUID
 ---
 
 <Layout title={`${event.title} — Тусовка`}>
-  <main class="mx-auto max-w-3xl px-4 py-10">
-    <p class="mb-4 text-sm text-muted-foreground">
-      <a href="/" class="underline underline-offset-4">← На головну</a>
-    </p>
-
-    <article class="overflow-hidden rounded-2xl border border-border bg-card">
-      <img
-        src={`/events/${event.id}/cover`}
-        alt={`Обкладинка події «${event.title}»`}
-        class="aspect-[16/9] w-full bg-muted object-cover"
-      />
-      <div class="flex flex-col gap-4 p-6">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <h1 class="text-3xl font-semibold tracking-tight">{event.title}</h1>
-          {event.visibility === 'private' && (
-            <span class="rounded-full bg-secondary px-3 py-1 text-xs font-medium">Приватна</span>
-          )}
-        </div>
-
-        <p class="text-sm text-muted-foreground">{dateLabel}</p>
-        <p class="text-sm font-medium">
-          Вільних місць: <span class="text-lg">{left}</span> з {event.places}
-        </p>
-        {event.description && <p class="whitespace-pre-wrap text-sm leading-relaxed">{event.description}</p>}
-
-        <div class="flex flex-wrap items-center gap-3 pt-2">
-          {user && !isAuthor && (
-            going ? (
-              <form method="post" action={`/api/events/${id}/unrsvp`}>
-                <button type="submit" class="rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
-                  Скасувати участь
-                </button>
-              </form>
-            ) : (
-              <form method="post" action={`/api/events/${id}/rsvp`}>
-                <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
-                <button
-                  type="submit"
-                  disabled={left === 0}
-                  class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-                >
-                  Іду
-                </button>
-              </form>
-            )
-          )}
-          {!user && <a href={`/login?next=${encodeURIComponent(`/events/${id}`)}`} class="text-sm underline underline-offset-4">Увійдіть, щоб записатися</a>}
-          {isAuthor && (
-            <a href={`/events/${id}/edit`} class="rounded-lg border border-input px-4 py-2 text-sm font-medium hover:bg-muted">
-              Редагувати подію
-            </a>
-          )}
-        </div>
-      </div>
-    </article>
-
-    <section class="mt-8 rounded-2xl border border-border bg-card p-6">
-      <h2 class="mb-3 text-lg font-medium">Учасники ({attendees.length})</h2>
-      {
-        attendees.length === 0 ? (
-          <p class="text-sm text-muted-foreground">Поки ніхто не записався. Станьте першим!</p>
-        ) : (
-          <ul class="flex flex-wrap gap-2">
-            {attendees.map((person: { id: string; name: string; email: string }) => (
-              <li class="rounded-full bg-muted px-3 py-1 text-sm">{person.name}</li>
-            ))}
-          </ul>
-        )
-      }
-    </section>
-  </main>
+  <EventDetailBits
+    client:load
+    id={event.id}
+    title={event.title}
+    date={formatKyiv(event.startsAt)}
+    description={event.description ?? ''}
+    left={left}
+    places={event.places}
+    isPrivate={event.visibility === 'private'}
+    cover={`/events/${event.id}/cover`}
+    user={Boolean(user)}
+    isAuthor={isAuthor}
+    going={going}
+    idempotencyKey={idempotencyKey}
+    attendees={attendees.map((person: { name: string }) => String(person.name))}
+  />
 </Layout>

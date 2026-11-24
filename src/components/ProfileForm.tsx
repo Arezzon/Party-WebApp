@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SpecularButton from './SpecularButton';
 
 type Props = { name: string };
 
@@ -54,15 +55,22 @@ export default function ProfileForm({ name }: Props) {
             style={{ background: '#0b0d12', color: '#e6e8ee', border: '1px solid #343b49', borderRadius: 8, padding: '10px 12px' }}
           />
         </label>
-        <button type="submit" disabled={saving} style={{ background: '#5b8cff', color: '#fff', border: 0, borderRadius: 8, padding: '11px 18px', cursor: 'pointer' }}>
+        <SpecularButton type="submit" size="sm" disabled={saving} tint="#7170ff" textColor="#ffffff">
           Зберегти
-        </button>
+        </SpecularButton>
       </form>
       {message && <p role="status" style={{ color: '#9aa2b1', marginBottom: 12 }}>{message}</p>}
       <hr style={{ border: 0, borderTop: '1px solid #262b36', margin: '20px 0' }} />
-      <button type="button" onClick={removeAccount} disabled={saving} style={{ background: 'transparent', color: '#ff8f8f', border: '1px solid #6d3434', borderRadius: 8, padding: '10px 16px', cursor: 'pointer' }}>
+      <SpecularButton
+        type="button"
+        size="sm"
+        onClick={removeAccount}
+        disabled={saving}
+        tint="#ff6b6b"
+        textColor="#ffffff"
+      >
         Видалити акаунт
-      </button>
+      </SpecularButton>
       <p style={{ color: '#9aa2b1', fontSize: '0.9rem', marginBottom: 0 }}>
         Видалення незворотнє: сесії, ваші події та записи зникають, коментарі стають анонімними («Знайомець»).
       </p>

@@ -1,23 +1,16 @@
 ---
 export const prerender = false;
-import '../styles/global.css';
+import Layout from '../layouts/Layout.astro';
 import { getDb } from '../lib/db';
-import SiteEffects from '../components/SiteEffects.astro';
-import ClickSpark from '../components/ClickSpark';
-import FadeContent from '../components/FadeContent';
-import AnimatedContent from '../components/AnimatedContent';
-import NeonLogo from '../components/NeonLogo';
-import HoloMosaic from '../components/HoloMosaic';
-import SplitText from '../components/SplitText';
-import DecryptedText from '../components/DecryptedText';
+import HeroText from '../components/bits/HeroText';
 import GlitchLabel from '../components/GlitchLabel';
-import ShinyText from '../components/ShinyText';
+import PromoBanner from '../components/bits/PromoBanner';
+import EventBrowser from '../components/bits/EventBrowser';
 
 /**
  * Головна: майбутні публічні події + пошук за назвою ?q=.
  * Пошук регістронезалежний для кирилиці: SQLite LIKE/LOWER працюють лише з ASCII,
- * тому фільтрація відбувається в JS через toLocaleLowerCase('uk-UA'). Символ '%'
- * у запиті є звичайним символом, а не wildcard — він не ламає пошук.
+ * тому фільтрація відбувається в JS через toLocaleLowerCase('uk-UA').
  */
 const q = (Astro.url.searchParams.get('q') ?? '').trim();
 const needle = q.toLocaleLowerCase('uk-UA');
@@ -36,14 +29,14 @@ const rows = db
       LIMIT 500`
   )
   .all(now) as Array<{
-    id: string;
-    title: string;
-    description: string | null;
-    starts_at: string;
-    places: number;
-    taken: number;
-    has_cover: number;
-  }>;
+  id: string;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  places: number;
+  taken: number;
+  has_cover: number;
+}>;
 
 const events = needle
   ? rows.filter((event) => String(event.title ?? '').toLocaleLowerCase('uk-UA').includes(needle))
@@ -52,203 +45,37 @@ const events = needle
 const fmt = new Intl.DateTimeFormat('uk-UA', {
   timeZone: 'Europe/Kyiv',
   dateStyle: 'medium',
-  timeStyle: 'short',
+  timeStyle: 'short'
 });
-const formatDate = (iso: string) => fmt.format(new Date(iso));
+
+const eventItems = events.map((event) => ({
+  id: event.id,
+  title: event.title,
+  description: event.description ? String(event.description).slice(0, 90) : 'Подія без опису',
+  date: fmt.format(new Date(event.starts_at)),
+  free: Math.max(0, event.places - event.taken),
+  cover: event.has_cover ? `/events/${event.id}/cover` : null
+}));
 ---
 
-<!doctype html>
-<html lang="uk">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="generator" content={Astro.generator} />
-    <title>Тусовка — події</title>
-  </head>
-  <body class="min-h-screen bg-background text-foreground">
-    <SiteEffects />
-    <div class="relative z-10">
-    <header class="border-b border-border">
-      <nav class="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-4 py-3 text-sm" style="white-space: nowrap;">
-        <a href="/" class="font-semibold" aria-label="Тусовка — на головну">
-          <span style="display:block;width:112px;height:30px;flex:0 0 auto">
-            <NeonLogo
-              client:load
-              text="Тусовка"
-              fontFamily="system-ui, sans-serif"
-              fontWeight={700}
-              scale={0.95}
-              baseColor="#e6e8ee"
-              colors={['#5e6ad2', '#7170ff', '#9b8cff']}
-              heat={0.4}
-              radius={1.1}
-              softness={0.2}
-              swell={0.05}
-              idle="lit"
-              speed={1.1}
-              intro
-              igniteOnClick
-            />
-          </span>
-        </a>
-        <a href="/events/new" class="text-muted-foreground hover:text-foreground">Створити подію</a>
-        <a href="/profile" class="text-muted-foreground hover:text-foreground">Профіль</a>
-        <a href="/rules" class="text-muted-foreground hover:text-foreground">Правила</a>
-        <a href="/login" class="ml-auto text-muted-foreground hover:text-foreground">Увійти</a>
-      </nav>
-    </header>
+<Layout title="Тусовка — події">
+  <div class="flex flex-col gap-6">
+    <HeroText client:load title="Майбутні події" subtitle="Час указано за Києвом." />
 
-    <ClickSpark
-      client:load
-      sparkColor={['#7170ff', '#828fff', '#f7f8f8']}
-      sparkSize={8}
-      sparkRadius={28}
-      sparkCount={8}
-      duration={380}
-      easing="ease-out"
-      layer="front"
-    >
-    <main class="mx-auto max-w-5xl px-4 py-8">
-      <FadeContent client:load trigger="mount" blur={false} duration={700} initialOpacity={0} effect="fade">
-        <div class="hero-split">
-          <SplitText
-            client:load
-            text="Майбутні події"
-            tag="h1"
-            splitType="chars"
-            effect="blur"
-            delay={38}
-            duration={1.1}
-            ease="power3.out"
-            staggerFrom="center"
-            textAlign="left"
-            trigger="load"
-            color="#f7f8f8"
-            accentColor="#8b8cff"
-            hoverEffect="lift"
-            className="hero-title text-4xl font-medium tracking-tight sm:text-5xl"
-          />
-        </div>
-        <p class="mt-2 text-sm text-muted-foreground">
-          <DecryptedText
-            client:load
-            text="Час указано за Києвом."
-            speed={28}
-            maxIterations={10}
-            sequential
-            revealDirection="start"
-            animateOn="view"
-            effect="scramble"
-            scrambleColor="#7170ff"
-            useOriginalCharsOnly={false}
-            characters="АБВГДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ0123456789±§@#$%"
-            parentClassName="inline"
-          />
-        </p>
-      </FadeContent>
+    {q ? (
+      <p class="text-sm text-muted-foreground">
+        Результати пошуку: <GlitchLabel client:load text={`«${q}»`} />
+      </p>
+    ) : (
+      <PromoBanner client:load href="/events/new" />
+    )}
 
-      <form method="get" action="/" class="mt-6 flex gap-2" role="search">
-        <input
-          type="search"
-          name="q"
-          value={q}
-          placeholder="Пошук за назвою…"
-          aria-label="Пошук подій за назвою"
-          class="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm"
-        />
-        <button type="submit" class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-          Знайти
-        </button>
-      </form>
-
-      {q ? (
-        <p class="mt-4 text-sm text-muted-foreground">
-          Результати пошуку:{' '}
-          <GlitchLabel client:load text={`«${q}»`} />
-        </p>
-      ) : null}
-
-      {!q ? (
-        <section class="relative mt-7 h-44 overflow-hidden rounded-xl border border-border" aria-label="Нові ефекти бібліотеки">
-          <HoloMosaic
-            client:load
-            spectrum="cool"
-            tileSize={1.7}
-            gap={0.12}
-            roundness={0.24}
-            bevel={0.55}
-            swirl={1.2}
-            ripple={0.5}
-            intensity={0.9}
-            saturation={0.35}
-            glitter={0.45}
-            speed={0.35}
-            opacity={0.55}
-            fade={0.5}
-            intro
-            mouseInteraction
-            flipOnClick
-          />
-          <div class="pointer-events-none absolute inset-0 flex flex-col justify-center gap-2 bg-gradient-to-r from-background/80 via-background/30 to-transparent p-6">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              <ShinyText
-                client:load
-                text="Нове в бібліотеці · Holo Mosaic"
-                color="#8a8f98"
-                shineColor="#c9caff"
-                speed={2.6}
-                angle={-18}
-                shineWidth={2.2}
-                softness={0.6}
-                bands={2}
-                glow={0.35}
-                trigger="loop"
-                easing="smooth"
-              />
-            </p>
-            <h2 class="text-2xl font-medium tracking-tight">Світло, яке не набридає</h2>
-            <p class="max-w-sm text-sm text-muted-foreground">Голограма реагує на курсор і кліки — просто як твої наступні події.</p>
-          </div>
-        </section>
-      ) : null}
-
-      {events.length === 0 ? (
-        <p class="mt-10 rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
-          Подій поки немає. Створіть першу!
-        </p>
-      ) : (
-        <AnimatedContent client:load direction="vertical" distance={28} duration={0.6} trigger="mount" stagger={0.06}>
-        <ul class="mt-8 grid gap-4 sm:grid-cols-2">
-          {
-            events.map((event) => (
-              <li class="card-surface overflow-hidden">
-                <a href={`/events/${event.id}`} class="block p-5 hover:bg-muted/40">
-                  {event.has_cover ? (
-                    <img
-                      src={`/events/${event.id}/cover`}
-                      alt=""
-                      loading="lazy"
-                      class="mb-4 h-32 w-full rounded-lg object-cover"
-                    />
-                  ) : null}
-                  <h2 class="text-lg font-medium break-words">{event.title}</h2>
-                  <p class="mt-1 text-sm text-muted-foreground">{formatDate(event.starts_at)}</p>
-                  {event.description ? (
-                    <p class="mt-2 line-clamp-3 text-sm text-muted-foreground break-words">{event.description}</p>
-                  ) : null}
-                  <p class="mt-3 text-sm font-medium">
-                    Вільних місць: {Math.max(0, event.places - event.taken)} з {event.places}
-                  </p>
-                </a>
-              </li>
-            ))
-          }
-        </ul>
-        </AnimatedContent>
-      )}
-    </main>
-    </ClickSpark>
-    </div>
-  </body>
-</html>
+    {eventItems.length === 0 ? (
+      <p class="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
+        Подій поки немає. Створіть першу!
+      </p>
+    ) : (
+      <EventBrowser client:load query={q} events={eventItems} />
+    )}
+  </div>
+</Layout>

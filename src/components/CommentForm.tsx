@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import SpecularButton from './SpecularButton';
 
 export interface CommentFormProps {
   /** UUID події, до якої додається коментар. */
@@ -78,13 +79,16 @@ export default function CommentForm({ eventId, className = '' }: CommentFormProp
           {error}
         </p>
       ) : null}
-      <button
+      <SpecularButton
         type="submit"
+        size="sm"
         disabled={busy}
-        className="mt-3 inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+        tint="#7170ff"
+        textColor="#ffffff"
+        className="mt-3"
       >
         {busy ? 'Надсилаємо…' : 'Коментувати'}
-      </button>
+      </SpecularButton>
     </form>
   );
 }
