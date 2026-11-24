@@ -1,5 +1,6 @@
 ---
 /** Шапка: слова не переносяться по складах; на ≤480px — тільки іконки. */
+import NeonLogo from './NeonLogo';
 const currentPath = Astro.url?.pathname ?? '/';
 const links = [
   { href: '/', label: 'Події', icon: 'home' },
@@ -15,7 +16,25 @@ const links = [
       <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
         <path d="M4 5h16v11H9l-5 4V5Z" fill="currentColor" opacity=".9"></path>
       </svg>
-      <span class="nav-label brand-label">Тусовка</span>
+      <span class="brand-neon-wrap nav-label" aria-label="Тусовка">
+        <NeonLogo
+          client:load
+          text="Тусовка"
+          fontFamily="system-ui, sans-serif"
+          fontWeight={700}
+          scale={0.95}
+          baseColor="#e6e8ee"
+          colors={['#5e6ad2', '#7170ff', '#9b8cff']}
+          heat={0.4}
+          radius={1.1}
+          softness={0.2}
+          swell={0.05}
+          idle="lit"
+          speed={1.1}
+          intro
+          igniteOnClick
+        />
+      </span>
     </a>
 
     <nav class="site-nav" aria-label="Головна навігація">
@@ -64,6 +83,12 @@ const links = [
     letter-spacing: -0.02em;
     color: var(--foreground, #e6e8ee);
     text-decoration: none;
+  }
+  .brand-neon-wrap {
+    display: block;
+    width: 112px;
+    height: 32px;
+    flex: 0 0 auto;
   }
   .site-nav,
   .site-nav a {

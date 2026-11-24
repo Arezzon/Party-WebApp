@@ -6,6 +6,8 @@ import SiteEffects from '../components/SiteEffects.astro';
 import ClickSpark from '../components/ClickSpark';
 import FadeContent from '../components/FadeContent';
 import AnimatedContent from '../components/AnimatedContent';
+import NeonLogo from '../components/NeonLogo';
+import HoloMosaic from '../components/HoloMosaic';
 
 /**
  * Головна: майбутні публічні події + пошук за назвою ?q=.
@@ -65,7 +67,27 @@ const formatDate = (iso: string) => fmt.format(new Date(iso));
     <div class="relative z-10">
     <header class="border-b border-border">
       <nav class="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-4 py-3 text-sm" style="white-space: nowrap;">
-        <a href="/" class="font-semibold">Тусовка</a>
+        <a href="/" class="font-semibold" aria-label="Тусовка — на головну">
+          <span style="display:block;width:112px;height:30px;flex:0 0 auto">
+            <NeonLogo
+              client:load
+              text="Тусовка"
+              fontFamily="system-ui, sans-serif"
+              fontWeight={700}
+              scale={0.95}
+              baseColor="#e6e8ee"
+              colors={['#5e6ad2', '#7170ff', '#9b8cff']}
+              heat={0.4}
+              radius={1.1}
+              softness={0.2}
+              swell={0.05}
+              idle="lit"
+              speed={1.1}
+              intro
+              igniteOnClick
+            />
+          </span>
+        </a>
         <a href="/events/new" class="text-muted-foreground hover:text-foreground">Створити подію</a>
         <a href="/profile" class="text-muted-foreground hover:text-foreground">Профіль</a>
         <a href="/rules" class="text-muted-foreground hover:text-foreground">Правила</a>
@@ -104,6 +126,35 @@ const formatDate = (iso: string) => fmt.format(new Date(iso));
       </form>
 
       {q ? <p class="mt-4 text-sm text-muted-foreground">Результати пошуку: «{q}»</p> : null}
+
+      {!q ? (
+        <section class="relative mt-7 h-44 overflow-hidden rounded-xl border border-border" aria-label="Нові ефекти бібліотеки">
+          <HoloMosaic
+            client:load
+            spectrum="cool"
+            tileSize={1.7}
+            gap={0.12}
+            roundness={0.24}
+            bevel={0.55}
+            swirl={1.2}
+            ripple={0.5}
+            intensity={0.9}
+            saturation={0.35}
+            glitter={0.45}
+            speed={0.35}
+            opacity={0.55}
+            fade={0.5}
+            intro
+            mouseInteraction
+            flipOnClick
+          />
+          <div class="pointer-events-none absolute inset-0 flex flex-col justify-center gap-2 bg-gradient-to-r from-background/80 via-background/30 to-transparent p-6">
+            <p class="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Нове в бібліотеці · Holo Mosaic</p>
+            <h2 class="text-2xl font-medium tracking-tight">Світло, яке не набридає</h2>
+            <p class="max-w-sm text-sm text-muted-foreground">Голограма реагує на курсор і кліки — просто як твої наступні події.</p>
+          </div>
+        </section>
+      ) : null}
 
       {events.length === 0 ? (
         <p class="mt-10 rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">

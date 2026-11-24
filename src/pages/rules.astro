@@ -1,6 +1,8 @@
 ---
 export const prerender = false;
+import '../styles/global.css';
 import SiteEffects from '../components/SiteEffects.astro';
+import NeonGlyphs from '../components/NeonGlyphs';
 const title = 'Правила сервісу — Тусовка';
 ---
 
@@ -24,12 +26,41 @@ const title = 'Правила сервісу — Тусовка';
       nav a { color: #8ab4ff; text-decoration: none; }
       nav a:hover { text-decoration: underline; }
       .note { border: 1px solid #262b36; background: #12151d; border-radius: 12px; padding: 14px 16px; }
+      .rules-glyphs {
+        height: 150px;
+        margin: 18px 0 26px;
+        border: 1px solid #262b36;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0b0d12;
+      }
     </style>
   </head>
   <body>
     <SiteEffects />
     <main class="relative z-10">
       <nav><a href="/">← Події</a><a href="/privacy">Конфіденційність</a><a href="/profile">Профіль</a></nav>
+      <div class="rules-glyphs" aria-hidden="true">
+        <NeonGlyphs
+          client:load
+          colors={['#5e6ad2', '#7170ff', '#c7ccd8']}
+          characters="ТУСОВКА01{}/\"
+          fontFamily="system-ui, sans-serif"
+          cellSize={18}
+          depth={10}
+          tilt={22}
+          speed={0.18}
+          density={0.35}
+          glow={0.7}
+          flicker={0.3}
+          scramble={0.25}
+          opacity={0.32}
+          fade={0.65}
+          intro
+          mouseInteraction={false}
+          burstOnClick={false}
+        />
+      </div>
       <h1>Правила сервісу</h1>
       <p>«Тусовка» — місце для безпечних зустрічей. Користуючись сервісом, ви погоджуєтеся з цими правилами.</p>
 
