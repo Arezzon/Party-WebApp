@@ -1,0 +1,107 @@
+---
+/** Шапка: слова не переносяться по складах; на ≤480px — тільки іконки. */
+const currentPath = Astro.url?.pathname ?? '/';
+const links = [
+  { href: '/', label: 'Події', icon: 'home' },
+  { href: '/events/new', label: 'Створити', icon: 'plus' },
+  { href: '/profile', label: 'Профіль', icon: 'user' },
+  { href: '/rules', label: 'Правила', icon: 'rules' }
+];
+---
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href="/" class="brand" aria-label="Тусовка — на головну">
+      <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22">
+        <path d="M4 5h16v11H9l-5 4V5Z" fill="currentColor" opacity=".9"></path>
+      </svg>
+      <span class="nav-label brand-label">Тусовка</span>
+    </a>
+
+    <nav class="site-nav" aria-label="Головна навігація">
+      {links.map((link) => (
+        <a
+          href={link.href}
+          class:list={['nav-link', 'whitespace-nowrap', { active: currentPath === link.href }]}
+          aria-label={link.label}
+          title={link.label}
+        >
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+            {link.icon === 'home' && <path d="M3 11 12 4l9 7v9h-6v-6H9v6H3v-9Z" fill="currentColor"></path>}
+            {link.icon === 'plus' && <path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7V4Z" fill="currentColor"></path>}
+            {link.icon === 'user' && <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4 0-7 2-7 5v1h14v-1c0-3-3-5-7-5Z" fill="currentColor"></path>}
+            {link.icon === 'rules' && <path d="M5 3h14v18l-7-4-7 4V3Zm2 3v9l5-3 5 3V6H7Z" fill="currentColor"></path>}
+          </svg>
+          <span class="nav-label">{link.label}</span>
+        </a>
+      ))}
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    border-bottom: 1px solid var(--border, #262b36);
+    background: var(--background, #0b0d12);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .header-inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--foreground, #e6e8ee);
+    text-decoration: none;
+  }
+  .site-nav,
+  .site-nav a {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+  .site-nav {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    border-radius: 9px;
+    color: var(--muted-foreground, #9aa2b1);
+    text-decoration: none;
+    font-size: 0.92rem;
+    line-height: 1;
+  }
+  .nav-link:hover,
+  .nav-link.active {
+    color: var(--foreground, #e6e8ee);
+    background: var(--accent, #171b24);
+  }
+  .nav-icon { display: none; }
+  @media (max-width: 479px) {
+    .header-inner { padding: 10px 12px; }
+    .nav-label { display: none; }
+    .nav-icon { display: block; }
+    .nav-link { padding: 8px; }
+    .site-nav { gap: 2px; }
+  }
+  @media (min-width: 480px) {
+    .nav-icon { display: none; }
+  }
+</style>

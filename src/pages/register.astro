@@ -1,0 +1,59 @@
+---
+export const prerender = false;
+import Layout from '../layouts/Layout.astro';
+import AuthForm from '../components/AuthForm.tsx';
+import { registerSchema, formatZodError } from '../lib/validation.ts';
+import { registerUser, getUserById } from '../lib/auth.ts';
+import { withIdempotency } from '../lib/idempotency.ts';
+
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  let email = '';
+  let password = '';
+  let name = '';
+  let key = '';
+  try {
+    const form = await Astro.request.formData();
+    email = String(form.get('email') ?? '');
+    password = String(form.get('password') ?? '');
+    name = String(form.get('name') ?? '');
+    key = String(form.get('idempotencyKey') ?? Astro.request.headers.get('Idempotency-Key') ?? '');
+  } catch {
+    error = 'Некоректні дані форми.';
+    Astro.response.status = 400;
+  }
+
+  if (!error) {
+    const parsed = registerSchema.safeParse({ email, password, name });
+    if (!parsed.success) {
+      error = formatZodError(parsed.error);
+      Astro.response.status = 400;
+    } else {
+      try {
+        const create = () => registerUser(parsed.data);
+        const result = key
+          ? await withIdempotency(`register:${parsed.data.email}`, key, 'user', create)
+          : create();
+        const user = typeof result === 'string' ? getUserById(result) : result;
+        if (!user) throw new Error('Не вдалося створити акаунт.');
+        return Astro.redirect('/login?registered=1', 303);
+      } catch (cause) {
+        error = cause instanceof Error ? cause.message : 'Не вдалося зареєструватися.';
+        Astro.response.status = 400;
+      }
+    }
+  }
+}
+---
+
+<Layout title="Реєстрація — Тусовка">
+  <main class="mx-auto flex min-h-[70vh] items-center px-4 py-10">
+    <AuthForm
+      client:load
+      mode="register"
+      error={error}
+      notice={Astro.url.searchParams.get('registered') === '1' ? 'Акаунт створено. Увійдіть, будь ласка.' : ''}
+    />
+  </main>
+</Layout>

@@ -1,0 +1,69 @@
+---
+export const prerender = false;
+import Layout from '../layouts/Layout.astro';
+import AuthForm from '../components/AuthForm.tsx';
+import { loginSchema } from '../lib/validation.ts';
+import {
+  authenticateUser,
+  checkLoginRateLimit,
+  clearLoginFailures,
+  clientKey,
+  createSession,
+  LOGIN_LIMIT_MESSAGE,
+  recordFailedLogin,
+  setSessionCookie
+} from '../lib/auth.ts';
+
+let error = '';
+let email = '';
+
+if (Astro.request.method === 'POST') {
+  let password = '';
+  let next = '';
+  try {
+    const form = await Astro.request.formData();
+    email = String(form.get('email') ?? '');
+    password = String(form.get('password') ?? '');
+    next = String(form.get('next') ?? '');
+  } catch {
+    error = 'Некоректні дані форми.';
+    Astro.response.status = 400;
+  }
+
+  if (!error) {
+    const limitKey = `login:${clientKey(Astro.request)}`;
+    const limit = checkLoginRateLimit(limitKey);
+    if (!limit.allowed) {
+      error = LOGIN_LIMIT_MESSAGE;
+      Astro.response.status = 429;
+      Astro.response.headers.set('Retry-After', String(limit.retryAfter));
+    } else {
+      const parsed = loginSchema.safeParse({ email, password });
+      const user = parsed.success ? authenticateUser(parsed.data.email, password) : null;
+      if (!user) {
+        recordFailedLogin(limitKey);
+        error = 'Невірний email або пароль.';
+        Astro.response.status = 400;
+      } else {
+        clearLoginFailures(limitKey);
+        const session = createSession(user.id);
+        setSessionCookie(Astro.cookies, session.token);
+        const destination = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+        return Astro.redirect(destination, 303);
+      }
+    }
+  }
+}
+---
+
+<Layout title="Вхід — Тусовка">
+  <main class="mx-auto flex min-h-[70vh] items-center px-4 py-10">
+    <AuthForm
+      client:load
+      mode="login"
+      error={error}
+      next={String(Astro.url.searchParams.get('next') ?? '')}
+      notice={Astro.url.searchParams.get('registered') === '1' ? 'Акаунт створено. Увійдіть, будь ласка.' : ''}
+    />
+  </main>
+</Layout>

@@ -1,0 +1,63 @@
+---
+export const prerender = false;
+import Layout from '../layouts/Layout.astro';
+
+const title = 'Політика конфіденційності';
+---
+
+<Layout title={title}>
+  <main class="mx-auto max-w-3xl px-4 py-10">
+    <h1 class="mb-6 text-3xl font-semibold tracking-tight">{title}</h1>
+    <div class="flex flex-col gap-5 text-sm leading-relaxed text-muted-foreground">
+      <section>
+        <h2 class="mb-1 text-lg font-medium text-foreground">1. Володілець даних</h2>
+        <p>
+          Володільцем персональних даних є адміністрація сервісу «Тусовка».
+          Контакт для питань щодо даних: <a class="underline underline-offset-4" href="mailto:privacy@tusivka.local">privacy@tusivka.local</a>.
+        </p>
+      </section>
+      <section>
+        <h2 class="mb-1 text-lg font-medium text-foreground">2. Мета збирання</h2>
+        <p>
+          Ми збираємо мінімально необхідні дані — електронну пошту, ім’я та пароль у вигляді
+          криптографічного хешу (scrypt) — щоб створити акаунт, авторизувати вас, дати змогу
+          створювати події та записуватися на них. Cookie сесії використовується лише для
+          підтримки входу.
+        </p>
+      </section>
+      <section>
+        <h2 class="mb-1 text-lg font-medium text-foreground">3. Обсяг і зберігання</h2>
+        <p>
+          Зберігаються: email, ім’я, хеш пароля, дати створення, дані про події, записи участі
+          та коментарі. Обкладинки подій зберігаються у базі даних у форматі WebP.
+          Імена файлів ігноруються. Пароль у відкритому вигляді ніколи не зберігається.
+        </p>
+      </section>
+      <section>
+        <h2 class="mb-1 text-lg font-medium text-foreground">4. Передача третім особам</h2>
+        <p>
+          Ми не передаємо персональні дані третім особам і не використовуємо сторонні
+          скрипти, аналітику чи зовнішні шрифти. Дані зберігаються локально на сервері застосунку.
+        </p>
+      </section>
+      <section>
+        <h2 class="mb-1 text-lg font-medium text-foreground">5. Ваші права</h2>
+        <p>
+          Відповідно до статті 12 Закону України «Про захист персональних даних» ви маєте право
+          знати, які дані про вас зберігаються, отримати до них доступ, вимагати виправлення,
+          зміни імені або повного видалення акаунта. Видалення акаунта знищує сесії, створені
+          події та записи участі, а коментарі знеособлюються.
+        </p>
+      </section>
+      <section>
+        <h2 class="mb-1 text-lg font-medium text-foreground">6. Безпека</h2>
+        <p>
+          Сесійні cookie мають прапорці HttpOnly та SameSite=Lax. Мутації захищені перевіркою
+          Origin, а повторні запити — Idempotency-Key. Захист від несанкціонованого доступу
+          здійснюється відповідно до чинного законодавства України.
+        </p>
+      </section>
+    </div>
+    <p class="mt-8 text-sm"><a href="/" class="underline underline-offset-4">На головну</a></p>
+  </main>
+</Layout>

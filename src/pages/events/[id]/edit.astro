@@ -1,0 +1,78 @@
+---
+export const prerender = false;
+import Layout from '../../../layouts/Layout.astro';
+import EventForm from '../../../components/EventForm.tsx';
+import { requireUser } from '../../../lib/auth.ts';
+import { getAttendees, getEvent, toKyivInput } from '../../../lib/events.ts';
+import { maxEventDateInput } from '../../../lib/timezone.ts';
+
+const user = requireUser(Astro);
+if (!user) {
+  return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`, 302);
+}
+
+const id = Astro.params.id ?? '';
+const event = getEvent(id);
+if (!event) {
+  return new Response('Подію не знайдено.', {
+    status: 404,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Content-Type-Options': 'nosniff' }
+  });
+}
+if (event.authorId !== user.id) {
+  return new Response('Редагувати подію може лише автор.', {
+    status: 403,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Content-Type-Options': 'nosniff' }
+  });
+}
+
+const attendees = getAttendees(id);
+const maxDate = maxEventDateInput();
+const initial = {
+  id: event.id,
+  title: event.title,
+  description: event.description,
+  startsAt: toKyivInput(event.startsAt),
+  places: event.places,
+  visibility: event.visibility,
+  coverUrl: `/events/${event.id}/cover`
+};
+---
+
+<Layout title={`Редагування: ${event.title} — Тусовка`}>
+  <main class="mx-auto max-w-4xl px-4 py-10">
+    <p class="mb-4 text-sm text-muted-foreground">
+      <a href={`/events/${event.id}`} class="underline underline-offset-4">← До події</a>
+    </p>
+    <EventForm client:load action={`/api/events/${event.id}/edit`} initial={initial} maxDate={maxDate} />
+
+    <section class="mx-auto mt-10 max-w-2xl rounded-2xl border border-border bg-card p-6">
+      <h2 class="mb-3 text-lg font-medium">Учасники ({attendees.length})</h2>
+      {
+        attendees.length === 0 ? (
+          <p class="text-sm text-muted-foreground">Поки ніхто не записався.</p>
+        ) : (
+          <ul class="flex flex-col gap-2 text-sm">
+            {attendees.map((person) => (
+              <li class="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2">
+                <span class="font-medium">{person.name}</span>
+                <span class="text-muted-foreground">{person.email}</span>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
+
+    <section class="mx-auto mt-6 max-w-2xl">
+      <form method="post" action={`/api/events/${event.id}/delete`}>
+        <button
+          type="submit"
+          class="rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/20"
+        >
+          Видалити подію
+        </button>
+      </form>
+    </section>
+  </main>
+</Layout>

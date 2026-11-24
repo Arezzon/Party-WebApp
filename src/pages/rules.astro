@@ -1,0 +1,70 @@
+---
+export const prerender = false;
+const title = 'Правила сервісу — Тусовка';
+---
+
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>{title}</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; background: #0b0d12; color: #e6e8ee; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.6; }
+      main { max-width: 760px; margin: 0 auto; padding: 32px 20px 64px; }
+      h1 { font-size: 1.9rem; letter-spacing: -0.02em; margin: 0 0 8px; }
+      h2 { font-size: 1.15rem; margin: 28px 0 8px; }
+      p, li { color: #c7ccd8; }
+      ul { padding-left: 20px; }
+      li { margin: 6px 0; overflow-wrap: anywhere; }
+      nav { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+      nav a { color: #8ab4ff; text-decoration: none; }
+      nav a:hover { text-decoration: underline; }
+      .note { border: 1px solid #262b36; background: #12151d; border-radius: 12px; padding: 14px 16px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="/">← Події</a><a href="/privacy">Конфіденційність</a><a href="/profile">Профіль</a></nav>
+      <h1>Правила сервісу</h1>
+      <p>«Тусовка» — місце для безпечних зустрічей. Користуючись сервісом, ви погоджуєтеся з цими правилами.</p>
+
+      <section>
+        <h2>1. Повага до учасників</h2>
+        <ul>
+          <li>Не публікуйте образи, погрози, дискримінацію, спам і рекламу.</li>
+          <li>Не видавайте себе за інших людей і не поширюйте чужі персональні дані.</li>
+          <li>Коментарі мають стосуватися події.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>2. Події та записи</h2>
+        <ul>
+          <li>Вказуйте правдиву дату, опис і кількість місць.</li>
+          <li>Приватні події доступні лише за посиланням-запрошенням; не поширюйте його без згоди автора.</li>
+          <li>Скасовуйте запис, якщо не можете прийти, щоб місце дісталося іншому.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>3. Скарги й видалення коментарів</h2>
+        <p class="note">
+          Якщо коментар порушує правила, натисніть кнопку «Поскаржитися» на сторінці події та вкажіть причину.
+          Автор коментаря й автор події можуть видалити коментар. Скарги розглядає модератор сервісу.
+        </p>
+      </section>
+
+      <section>
+        <h2>4. Ваші дані</h2>
+        <p>
+          Ви можете змінити ім’я або видалити акаунт у <a href="/profile">профілі</a>.
+          Після видалення сесії, події та записи знищуються, а коментарі знеособлюються.
+          Детальніше — у <a href="/privacy">політиці конфіденційності</a>.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

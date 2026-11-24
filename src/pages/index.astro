@@ -1,0 +1,124 @@
+---
+export const prerender = false;
+import '../styles/global.css';
+import { getDb } from '../lib/db';
+
+/**
+ * Головна: майбутні публічні події + пошук за назвою ?q=.
+ * Пошук регістронезалежний для кирилиці: SQLite LIKE/LOWER працюють лише з ASCII,
+ * тому фільтрація відбувається в JS через toLocaleLowerCase('uk-UA'). Символ '%'
+ * у запиті є звичайним символом, а не wildcard — він не ламає пошук.
+ */
+const q = (Astro.url.searchParams.get('q') ?? '').trim();
+const needle = q.toLocaleLowerCase('uk-UA');
+
+const rawDb: any = getDb();
+const db: any = rawDb?.db ?? rawDb;
+const now = new Date().toISOString();
+const rows = db
+  .prepare(
+    `SELECT e.id, e.title, e.description, e.starts_at, e.places,
+            (SELECT COUNT(*) FROM RSVP r WHERE r.event_id = e.id) AS taken,
+            (e.cover_blob IS NOT NULL) AS has_cover
+       FROM Events e
+      WHERE e.visibility = 'public' AND e.starts_at > ?
+      ORDER BY e.starts_at ASC
+      LIMIT 500`
+  )
+  .all(now) as Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    starts_at: string;
+    places: number;
+    taken: number;
+    has_cover: number;
+  }>;
+
+const events = needle
+  ? rows.filter((event) => String(event.title ?? '').toLocaleLowerCase('uk-UA').includes(needle))
+  : rows;
+
+const fmt = new Intl.DateTimeFormat('uk-UA', {
+  timeZone: 'Europe/Kyiv',
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+const formatDate = (iso: string) => fmt.format(new Date(iso));
+---
+
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Тусовка — події</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <header class="border-b border-border">
+      <nav class="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-4 py-3 text-sm" style="white-space: nowrap;">
+        <a href="/" class="font-semibold">Тусовка</a>
+        <a href="/events/new" class="text-muted-foreground hover:text-foreground">Створити подію</a>
+        <a href="/profile" class="text-muted-foreground hover:text-foreground">Профіль</a>
+        <a href="/rules" class="text-muted-foreground hover:text-foreground">Правила</a>
+        <a href="/login" class="ml-auto text-muted-foreground hover:text-foreground">Увійти</a>
+      </nav>
+    </header>
+
+    <main class="mx-auto max-w-5xl px-4 py-8">
+      <h1 class="text-3xl font-semibold tracking-tight">Майбутні події</h1>
+      <p class="mt-2 text-sm text-muted-foreground">Час указано за Києвом.</p>
+
+      <form method="get" action="/" class="mt-6 flex gap-2" role="search">
+        <input
+          type="search"
+          name="q"
+          value={q}
+          placeholder="Пошук за назвою…"
+          aria-label="Пошук подій за назвою"
+          class="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm"
+        />
+        <button type="submit" class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+          Знайти
+        </button>
+      </form>
+
+      {q ? <p class="mt-4 text-sm text-muted-foreground">Результати пошуку: «{q}»</p> : null}
+
+      {events.length === 0 ? (
+        <p class="mt-10 rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
+          Подій поки немає. Створіть першу!
+        </p>
+      ) : (
+        <ul class="mt-8 grid gap-4 sm:grid-cols-2">
+          {
+            events.map((event) => (
+              <li class="overflow-hidden rounded-xl border border-border bg-card">
+                <a href={`/events/${event.id}`} class="block p-5 hover:bg-muted/40">
+                  {event.has_cover ? (
+                    <img
+                      src={`/events/${event.id}/cover`}
+                      alt=""
+                      loading="lazy"
+                      class="mb-4 h-32 w-full rounded-lg object-cover"
+                    />
+                  ) : null}
+                  <h2 class="text-lg font-medium break-words">{event.title}</h2>
+                  <p class="mt-1 text-sm text-muted-foreground">{formatDate(event.starts_at)}</p>
+                  {event.description ? (
+                    <p class="mt-2 line-clamp-3 text-sm text-muted-foreground break-words">{event.description}</p>
+                  ) : null}
+                  <p class="mt-3 text-sm font-medium">
+                    Вільних місць: {Math.max(0, event.places - event.taken)} з {event.places}
+                  </p>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      )}
+    </main>
+  </body>
+</html>

@@ -1,0 +1,22 @@
+---
+export const prerender = false;
+import Layout from '../../layouts/Layout.astro';
+import EventForm from '../../components/EventForm.tsx';
+import { requireUser } from '../../lib/auth.ts';
+import { maxEventDateInput } from '../../lib/timezone.ts';
+
+const user = requireUser(Astro);
+if (!user) {
+  return Astro.redirect('/login?next=/events/new', 302);
+}
+const maxDate = maxEventDateInput();
+---
+
+<Layout title="Нова подія — Тусовка">
+  <main class="mx-auto max-w-4xl px-4 py-10">
+    <p class="mb-4 text-sm text-muted-foreground">
+      <a href="/" class="underline underline-offset-4">← На головну</a>
+    </p>
+    <EventForm client:load action="/api/events" maxDate={maxDate} />
+  </main>
+</Layout>
