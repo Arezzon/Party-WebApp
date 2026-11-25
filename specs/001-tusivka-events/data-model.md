@@ -30,8 +30,8 @@
 | description | TEXT | 0..5000 |
 | starts_at | TEXT ISO UTC | > now, ≤ now+2years |
 | places | INTEGER | >0, ціле, ≤10000 |
-| cover_blob | BLOB | WebP, ≤~2MB після перекодування |
-| cover_mime | TEXT | завжди `image/webp` |
+| cover_blob | BLOB | оригінальні байти PNG/JPEG/WebP, ≤1.5 МБ |
+| cover_mime | TEXT | безпечний MIME за magic bytes (`image/png`/`image/jpeg`/`image/webp`) |
 | visibility | TEXT | `public` \| `private` |
 | invite_token | TEXT UNIQUE | 32 random bytes hex (64 chars) |
 | created_at | TEXT ISO UTC | |
@@ -87,7 +87,7 @@ CREATE UNIQUE INDEX idx_invite ON Events(invite_token);
 - `title`: trim().min(1).max(120).
 - `starts_at`: ISO date, > now(), ≤ now+2r.
 - `body`: trim().min(1).max(2000).
-- upload: magic bytes PNG/JPEG/WebP, ≤10MB, інакше 400/413.
+- upload: magic bytes PNG/JPEG/WebP, ≤1.5 MB у Worker, інакше 400/413.
 
 ## State transitions
 - Event: `upcoming` → (starts_at < now) `past` → запис заборонений (400 «Реєстрацію завершено»).

@@ -7,6 +7,8 @@ description: "Task list for Тусовка events service implementation"
 **Input**: Design documents from `/specs/001-tusivka-events/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/web-routes.md
 
+**Status**: Implemented. Історичні ID задач збережено; поточний стек — Cloudflare Workers + D1 (див. [specs/003-cloudflare-workers-cicd](../003-cloudflare-workers-cicd/tasks.md)).
+
 **Tests**: Tests REQUIRED by constitution Principle V (security/concurrency).
 
 **Organization**: Tasks grouped by user story (US1–US6) for independent implementation/testing.
@@ -17,7 +19,7 @@ description: "Task list for Тусовка events service implementation"
 
 **Purpose**: Проєктний/node配置, залежності
 
-- [X] T001 Встановити залежності `better-sqlite3`, `sharp`, `zod`, `tsx` (@types як dev) через npm у `/data/workspace/tusivka-app`
+- [X] T001 [ historic ] Встановити залежності `zod`, `tsx`, `@astrojs/cloudflare`, `wrangler`; `better-sqlite3` лишився лише для Node-тестів
 - [X] T002 [P] Додати `test` script у `package.json` (`node --import tsx --test tests/*.test.ts`) і `.env.example` з `DATABASE_PATH`, `SESSION_SECRET`
 - [X] T003 [P] Створити `src/lib/env.ts` (конфіг із process.env з дефолтами)
 
@@ -29,11 +31,11 @@ description: "Task list for Тусовка events service implementation"
 
 **⚠️ CRITICAL**: No user story work until complete.
 
-- [X] T004 Створити `src/lib/db.ts`: better-sqlite3, WAL, схема з data-model.md (User, Session, Event, RSVP, Comment, IdempotencyKey, Report), індекси, FK ON DELETE
+- [X] T004 Створити `src/lib/db.ts`: async D1-фасад зі схемою з data-model.md (User, Session, Event, RSVP, Comment, IdempotencyKey, Report), індекси, FK ON DELETE
 - [X] T005 [P] Реалізувати `src/lib/auth.ts`: scrypt salt:hash, session token (randomBytes 32, sha256 у БД), cookie HttpOnly+Samesite=Lax, `requireUser(context)`; rate-limit логіну (10 спроб → 429)
 - [X] T006 [P] Реалізувати `src/middleware.ts`: перевірка Origin для мутацій (400), security headers (nosniff, no-referrer, DENY, CSP), читання сесії, invite cookie
 - [X] T007 [P] Реалізувати `src/lib/validation.ts`: zod-схеми places/title/dates/body/upload з data-model.md (dated ≤2р, magic bytes ≤10MB)
-- [X] T008 [P] Реалізувати `src/lib/images.ts`: sharp → WebP quality 80, BLOB, `image/webp`+nosniff; ігнорування filename
+- [X] T008 [P] Реалізувати `src/lib/images.ts`: magic bytes, оригінальні байти, ≤1.5 МБ, безпечний MIME + nosniff; ігнорування filename
 - [X] T009 [P] Реалізувати `src/lib/idempotency.ts`: `withIdempotency(userId,key,kind,fn)` через UNIQUE (user_id,key,kind)
 - [X] T010 [P] Реалізувати `src/lib/timezone.ts`: UTC↔Europe/Kyiv (Intl), підпис «за Києвом», max date +2р
 - [X] T011 Створити `src/layouts/Layout.astro` + `src/components/Header.astro` (nowrap на 375px, іконки ≤480px) + імпорт global.css
@@ -57,13 +59,13 @@ description: "Task list for Тусовка events service implementation"
 ## Phase 4: User Story 2 — Створення та керування подією (P1)
 
 **Goal**: Author створює/редагує/видаляє подію з обкладинкою, бачить учасників.
-**Independent Test**: створити подію з PNG→WebP; чужі 403; places/дата валідація; зменшення places нижче записаних → 400.
+**Independent Test**: створити подію з PNG (оригінальні байти); чужі 403; places/дата валідація; зменшення places нижче записаних → 400.
 
 - [X] T016 [P] [US2] Test `tests/events.test.ts`: створення, валідація places 0/-1/1.5/7abc/1e20, дата 9999, author-only 403
 - [X] T017 [US2] `src/lib/events.ts`: CRUD, upload обкладинки через images.ts, збереження UTC, invite_token 32B
 - [X] T018 [US2] Сторінки `src/pages/events/new.astro`, `events/[id]/edit.astro` + `src/components/EventForm.tsx` (React, max date +2р)
 - [X] T019 [US2] API `src/pages/api/events.ts` (POST ідемпотентний), `api/events/[id]/edit.ts`, `delete.ts`; список учасників на сторінці події
-- [X] T020 [US2] Сторінка `src/pages/events/[id]/cover.ts` — WebP з nosniff
+- [X] T020 [US2] Сторінка `src/pages/events/[id]/cover.ts` — ETag + Cache API, nosniff, приватні `no-store`
 
 ---
 
@@ -139,5 +141,5 @@ description: "Task list for Тусовка events service implementation"
 
 ## Self-audit evidence (T035)
 
-- `tests/self-audit.mjs` — живий HTTP-аудит із двома користувачами на зібраному сервері (`node ./dist/server/entry.mjs`, PORT=4399, окрема БД `data/audit.db`): 10/10 PASS (реєстрація, вхід, створення події з PNG→WebP, чужий 403 на редагування/видалення, профіль автора, відхилення чужого Origin, дружній 404).
+- `tests/self-audit.mjs` — живий HTTP-аудит із двома користувачами на зібраному сервері (`node ./dist/server/entry.mjs`, PORT=4399, окрема БД `data/audit.db`): 10/10 PASS (реєстрація, вхід, створення події з PNG (оригінальні байти), чужий 403 на редагування/видалення, профіль автора, відхилення чужого Origin, дружній 404).
 - Під час аудиту знайдено й виправлено: `.env.example` був відсутній, README лишався дефолтним шаблоном Astro.

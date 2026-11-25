@@ -85,7 +85,7 @@ bash scripts/perf-check.sh  # заміри часу відповіді прод�
 
 ## Структура
 
-- `specs/001-tusivka-events/`, `specs/002-moderation-reports/` — Spec Kit: `spec.md`, `plan.md`, `tasks.md`, `data-model.md`, `contracts/`, `checklists/`
+- `specs/001-tusivka-events/`, `specs/002-moderation-reports/`, `specs/003-cloudflare-workers-cicd/` — Spec Kit: `spec.md`, `plan.md`, `tasks.md`, `data-model.md`, `contracts/`, `checklists/`
 - `.specify/memory/constitution.md` — принципи проєкту
 - `src/lib/` — async D1-фасад, auth, валідація, ідемпотентність, moderation, зображення, час, події
 - `migrations/0001_init.sql` — схема D1; `wrangler.jsonc` — binding `DB` і змінні

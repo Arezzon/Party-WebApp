@@ -15,13 +15,13 @@
 
 **Language/Version**: TypeScript, Node.js ≥22.23.4
 
-**Primary Dependencies**: Astro 7 SSR, React 19, Tailwind 4, better-sqlite3, node:test
+**Primary Dependencies**: Astro 7 SSR on Cloudflare Workers, React 19, Tailwind 4, D1, node:test
 
-**Storage**: SQLite (поточний `DATABASE_PATH`, у демо — `./data/tunnel.db`)
+**Storage**: Cloudflare D1 (SQLite-сумісний); Node-фолбек для тестів через `better-sqlite3`
 
 **Testing**: `npm test` (node:test), `npx astro check`, `npm run build`, `tests/self-audit.mjs`
 
-**Target Platform**: Linux SSR-сервер, браузер (desktop + 375px mobile)
+**Target Platform**: Cloudflare Workers SSR, браузер (desktop + 375px mobile)
 
 **Project Type**: web application (Astro SSR + React islands)
 

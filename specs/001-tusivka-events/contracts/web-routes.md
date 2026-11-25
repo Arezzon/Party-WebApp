@@ -8,7 +8,7 @@
 |--------|------|------|------|---------|--------|
 | GET | `/` | — | — | HTML: майбутні публічні події + пошук `?q=` | — |
 | GET | `/events/:id` | private: invite | — | HTML події, коментарі, places left | 404 |
-| GET | `/events/:id/cover` | private: invite | — | `image/webp`, `nosniff` | 404 |
+| GET | `/events/:id/cover` | private: invite | — | original MIME, `nosniff`, `ETag`, public cache / private `no-store` | 404 |
 | POST | `/register` | — | email, password, name, Idempotency-Key | 303 → /login | 400 (email/пароль/duplicate) |
 | GET/POST | `/login` | — | email, password | 303 → / | 400, 429 |
 | POST | `/logout` | ✓ | — | 303 → / | 302 |

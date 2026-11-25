@@ -4,6 +4,8 @@
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 
+**Status**: Implemented on Cloudflare Workers + D1; модерація доступна на https://tusivka.byndevav.workers.dev/moderation.
+
 **Tests**: included because constitution V requires tests for security and idempotency.
 
 ## Format: `[ID] [P?] [Story] Description`

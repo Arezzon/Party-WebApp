@@ -5,18 +5,18 @@
 **Input**: Feature specification from `/specs/001-tusivka-events/spec.md`
 
 ## Summary
-Вебзастосунок для створення подій із обмеженими місцями й запису учасників. Реалізується на Astro 7 (SSR, `@astrojs/node` standalone) + React 19 (острівці з React Bits) + Tailwind 4 + shadcn/ui. Дані — SQLite (better-sqlite3, WAL), обкладинки — WebP BLOB у БД. Авторизація через scrypt + HttpOnly cookie, захист Origin/CSRF, rate-limit. Усі 6 знахідок рев'ю закриті в коді й автотестах.
+Вебзастосунок для створення подій із обмеженими місцями й запису учасників. Реалізується на Astro 7 (SSR на Cloudflare Workers Free через `@astrojs/cloudflare`) + React 19 (острівці з React Bits) + Tailwind 4 + shadcn/ui. Дані — Cloudflare D1, обкладинки — оригінальні байти BLOB ≤1.5 МБ. Авторизація через scrypt + HttpOnly cookie, захист Origin/CSRF, rate-limit. Деплой автоматичний через GitHub Actions.
 
 ## Technical Context
 
 **Language/Version**: TypeScript strict, Node ≥22.23.4, Astro 7.4.13, React 19.3.1
-**Primary Dependencies**: `@astrojs/node`, `@astrojs/react`, `tailwindcss@4`, `shadcn/ui`, React Bits (`@reactbits` registry), `better-sqlite3`, `sharp`, `zod`
-**Storage**: SQLite (WAL); cover images as WebP BLOB in DB; sessions in DB
-**Testing**: `node:test` + `node:assert` (одна команда `npm test`), supertest-подібні виклики через Astro `app.fetch` або Node test server
-**Target Platform**: Linux Node-сервер (standalone), деплой на Node-хост / Netlify Functions
+**Primary Dependencies**: `@astrojs/cloudflare`, `@astrojs/react`, `tailwindcss@4`, `shadcn/ui`, React Bits (`@reactbits` registry), `wrangler`, `zod`
+**Storage**: Cloudflare D1; обкладинки — оригінальні байти BLOB ≤1.5 МБ; сесії в D1
+**Testing**: `node:test` + `node:assert` (`npm test`), `npx astro check`, `npm run build`, `scripts/perf-check.sh`
+**Target Platform**: Cloudflare Workers Free, `https://tusivka.byndevav.workers.dev`
 **Project Type**: Web application (SSR + React islands)
-**Performance Goals**: p95 <1.5s на 200 паралельних запитах до головної; 0 500-х на malformed input
-**Constraints**: пам'ять контейнера <200MB; filename ігнорується; без зовнішніх CDN/шрифтів
+**Performance Goals**: home <400 мс, event <800 мс, cover <500 мс холодна; 0 500-х на malformed input
+**Constraints**: D1 BLOB ≤2 МБ; Workers Free 10 мс CPU/запит; filename ігнорується
 **Scale/Scope**: ~10 користувачів у демо, 7 екранів/маршрутів, 20 FR
 
 ## Constitution Check
@@ -52,10 +52,10 @@ specs/001-tusivka-events/
 ```text
 src/
 ├── lib/
-│   ├── db.ts             # better-sqlite3, схема, WAL, міграції
+│   ├── db.ts             # async D1-фасад, Node-фолбек для тестів
 │   ├── auth.ts           # scrypt, cookie, session, Origin guard
 │   ├── validation.ts     # zod-схеми (places, title, date, upload)
-│   ├── images.ts         # sharp → WebP, MIME/розмір
+│   ├── images.ts         # magic bytes, оригінальні байти, ≤1.5 МБ
 │   ├── events.ts         # CRUD, RSVP (transaction), comments, invite
 │   ├── idempotency.ts    # IdempotencyKey перевірка
 │   ├── timezone.ts       # UTC ↔ Europe/Kyiv
@@ -64,7 +64,7 @@ src/
 ├── pages/
 │   ├── index.astro                 # головна + пошук
 │   ├── events/[id].astro           # сторінка події
-│   ├── events/[id]/cover.ts        # обкладинка (WebP, nosniff)
+│   ├── events/[id]/cover.ts        # ETag, Cache API, nosniff, private no-store
 │   ├── register.astro / login.astro / logout.ts
 │   ├── profile.astro               # профіль + редагування/видалення
 │   ├── events/new.astro / events/[id]/edit.astro
@@ -103,6 +103,12 @@ tests/
 - [data-model.md](./data-model.md) — 7 сутностей, індекси, валідації.
 - [contracts/web-routes.md](./contracts/web-routes.md) — HTTP-контракт.
 - [quickstart.md](./quickstart.md) — сценарії перевірки.
+
+## Поточний стан
+- Прод: https://tusivka.byndevav.workers.dev — Cloudflare Workers + D1.
+- CI: `.github/workflows/ci.yml`; деплой: `.github/workflows/deploy.yml`; оновлення: `.github/dependabot.yml`.
+- Швидкість:див. `scripts/perf-check.sh` — home ~120–150 мс, event ~170–190 мс, cover ~150–390 мс.
+- Детальніше: [specs/003-cloudflare-workers-cicd](../003-cloudflare-workers-cicd/spec.md).
 
 ## Complexity Tracking
 *Constitution Check пройдено без порушень — таблиця не потрібна.*

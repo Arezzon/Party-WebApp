@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-25
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Задокументувати в проекті, виправити дублювання скарг і додати модераторський інтерфейс."
 
