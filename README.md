@@ -67,7 +67,21 @@ cache-buster, бо інакше Cloudflare віддає стару закешо�
 npm test          # 32 автотести (node:test)
 npx astro check   # перевірка типів; має бути 0 errors
 npm run build     # продакшен-білд
+bash scripts/perf-check.sh  # заміри часу відповіді продових маршрутів
 ```
+
+## CI/CD
+
+- `.github/workflows/ci.yml` — на push у `main`/`refactor/cloudflare-workers-d1` і на PR до `main`: `npm ci`, 32 тести, `astro check`, білд.
+- `.github/workflows/deploy.yml` — на push у `main` і вручну: білд, `wrangler d1 migrations apply tusivka --remote`, `wrangler deploy`.
+- `.github/dependabot.yml` — щотижневі PR на оновлення npm-залежностей і GitHub Actions (група minor/patch разом).
+
+Обов'язкові секрети репозиторію (Settings → Secrets and variables → Actions):
+
+- `CLOUDFLARE_API_TOKEN` — токен із `Workers Scripts: Edit`, `D1: Edit`, `Account Settings: Read`.
+- `CLOUDFLARE_ACCOUNT_ID` — ID акаунта Cloudflare.
+
+`SESSION_SECRET` зберігається безпосередньо у Worker через `wrangler secret put` і в Actions не дублюється.
 
 ## Структура
 
