@@ -257,6 +257,8 @@ test('гостьова картка коментарів: сітка, ієрар
   const detail = await readFile(new URL('../src/components/site/EventDetail.astro', import.meta.url), 'utf8');
   const css = await readFile(new URL('../src/styles/global.css', import.meta.url), 'utf8');
   assert.match(detail, /class="cta-card p-6 sm:p-7"/, 'картка має окремий CTA-стиль');
+  assert.ok(detail.includes('grid h-full grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_1fr]'), 'вміст картки займає всю висоту');
+  assert.ok(detail.includes('row-start-2 self-end justify-self-start'), 'кнопка притиснута до низу картки на мобільному');
   assert.match(detail, /grid-cols-\[auto_minmax\(0,1fr\)\]/, 'на мобільному: іконка + контент');
   assert.match(detail, /lg:grid-cols-\[auto_minmax\(0,1fr\)_auto\]/, 'на великих: іконка + контент + дія');
   assert.match(detail, /<h2 class="eyebrow">Учасники/, 'секція учасників має заголовок другого рівня');
