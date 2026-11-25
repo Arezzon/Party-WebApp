@@ -137,18 +137,18 @@ const props = Astro.props;
       {props.user ? (
         <CommentForm client:load eventId={props.id} />
       ) : (
-        <div class="grid h-full grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_1fr] gap-x-4 gap-y-5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:grid-rows-1 lg:items-start lg:gap-x-6 lg:gap-y-0">
-          <span class="cta-card__icon row-start-1 col-start-1 self-start" aria-hidden="true">
+        <div class="grid h-full grid-rows-[auto_auto_auto] content-center justify-items-center gap-y-5 text-center sm:gap-y-6">
+          <span class="cta-card__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M20 11.5a7.5 7.5 0 0 1-10.9 6.7L4 20l1.8-5.1A7.5 7.5 0 1 1 20 11.5Z" />
             </svg>
           </span>
-          <div class="min-w-0 row-start-1 col-start-2">
+          <div class="min-w-0">
             <p class="eyebrow">Коментарі</p>
             <h3 class="mt-2 text-base font-medium leading-snug">Приєднуйся до розмови</h3>
             <p class="mt-1 text-sm leading-relaxed text-muted-foreground">Увійдіть, щоб залишити коментар.</p>
           </div>
-          <a href={`/login?next=${encodeURIComponent(`/events/${props.id}`)}`} class="pill pill--primary group col-span-2 row-start-2 self-end justify-self-start lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:justify-self-end">
+          <a href={`/login?next=${encodeURIComponent(`/events/${props.id}`)}`} class="pill pill--primary group">
             Увійти
             <span aria-hidden="true" class="transition-transform group-hover:translate-x-0.5">→</span>
           </a>
