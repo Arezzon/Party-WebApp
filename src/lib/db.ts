@@ -165,6 +165,15 @@ function wrapD1(d1: any): DbHandle {
 }
 
 async function nodeHandle(): Promise<DbHandle> {
+  // Fresh clones have no gitignored data/ directory — create it for the
+  // Node-only test fallback instead of failing on a clean CI checkout.
+  if (DATABASE_PATH !== ':memory:') {
+    // @ts-ignore -- Node builtin; excluded from the Worker bundle
+    const { dirname } = await import(/* @vite-ignore */ 'node:path');
+    // @ts-ignore -- Node builtin; excluded from the Worker bundle
+    const { mkdirSync } = await import(/* @vite-ignore */ 'node:fs');
+    mkdirSync(dirname(DATABASE_PATH), { recursive: true });
+  }
   // @ts-ignore -- Node-only test fallback; excluded from the Worker bundle
   const mod: any = await import(/* @vite-ignore */ 'better-sqlite3');
   const Database = mod.default ?? mod;
