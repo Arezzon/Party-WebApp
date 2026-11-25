@@ -26,7 +26,7 @@ npx wrangler secret put SESSION_SECRET
 npx wrangler deploy
 ```
 
-Працює на https://tusivka.arambaran957.workers.dev. D1 Free: 5 млн read/день,
+Працює на https://tusivka.byndevav.workers.dev. D1 Free: 5 млн read/день,
 100 тис. write/день, 5 ГБ. D1 обмежує рядок/BLOB 2 МБ, тому обкладинки — до
 1.5 МБ і зберігаються оригінальними байтами (без `sharp`/R2).
 
