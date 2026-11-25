@@ -446,7 +446,13 @@ export interface OriginCheckResult {
 /** Origin must match the request origin exactly; absent Origin is treated as same-origin. */
 export function checkOrigin(request: Request): OriginCheckResult {
   const origin = request?.headers?.get?.('origin');
-  if (!origin) return { allowed: true, reason: 'missing' };
+  if (!origin || origin === 'null') {
+    if (origin === 'null') {
+      const site = request?.headers?.get?.('sec-fetch-site');
+      if (site === 'cross-site' || site === 'same-site') return { allowed: false, reason: 'invalid' };
+    }
+    return { allowed: true, reason: 'missing' };
+  }
   let parsed: URL;
   try { parsed = new URL(origin); }
   catch { return { allowed: false, reason: 'invalid' }; }
@@ -456,6 +462,12 @@ export function checkOrigin(request: Request): OriginCheckResult {
     // Advanced proxies may forward the public origin via a trusted header.
     const forwarded = request.headers.get('x-forwarded-host');
     if (forwarded && parsed.host === forwarded.split(',')[0].trim()) return { allowed: true };
+    // Tunnels (cloudflared etc.) keep request.url local but forward the public Host header.
+    const host = request.headers.get('host');
+    if (host && parsed.host === host.split(',')[0].trim()) {
+      const proto = request.headers.get('x-forwarded-proto')?.split(',')[0].trim();
+      if (!proto || proto === parsed.protocol.replace(':', '')) return { allowed: true };
+    }
   } catch { /* invalid request URL */ }
   return { allowed: false, reason: 'mismatch' };
 }

@@ -82,3 +82,26 @@ test('Origin з іншого домену заборонений, відсутн
   assert.equal(auth.checkOrigin(request('https://evil.example')).allowed, false);
   assert.equal(auth.checkOrigin(request('not a url')).allowed, false);
 });
+
+test('Origin за публічним тунелем: Host приймається, чужий — ні', () => {
+  const proxied = (origin: string, host: string) =>
+    new Request('http://localhost:4322/login', {
+      method: 'POST',
+      headers: { origin, host, 'x-forwarded-proto': 'https' }
+    });
+  assert.equal(auth.checkOrigin(proxied('https://site.trycloudflare.com', 'site.trycloudflare.com')).allowed, true);
+  assert.equal(auth.checkOrigin(proxied('https://evil.example', 'site.trycloudflare.com')).allowed, false);
+  assert.equal(auth.checkOrigin(proxied('http://site.trycloudflare.com', 'site.trycloudflare.com')).allowed, false);
+});
+
+test('Origin null дозволений тільки для same-origin', () => {
+  const withSite = (site?: string) =>
+    new Request('https://tusivka.test/login', {
+      method: 'POST',
+      headers: site ? { origin: 'null', 'sec-fetch-site': site } : { origin: 'null' }
+    });
+  assert.equal(auth.checkOrigin(withSite('same-origin')).allowed, true);
+  assert.equal(auth.checkOrigin(withSite('none')).allowed, true);
+  assert.equal(auth.checkOrigin(withSite('cross-site')).allowed, false);
+  assert.equal(auth.checkOrigin(withSite('same-site')).allowed, false);
+});
