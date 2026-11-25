@@ -212,7 +212,7 @@ input[type="file"].field { padding: 0.55rem; }
   border: 1px solid var(--border);
   border-radius: 1rem;
   background:
-    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--ring) 10%, transparent), transparent 55%),
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--foreground) 5%, transparent), transparent 55%),
     var(--card);
 }
 
@@ -223,10 +223,10 @@ input[type="file"].field { padding: 0.55rem; }
   flex: none;
   align-items: center;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--ring) 35%, var(--border));
+  border: 1px solid var(--border);
   border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--ring) 10%, var(--card));
-  color: var(--ring);
+  background: var(--muted);
+  color: var(--foreground);
 }
 
 .dots {
