@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import SpecularButton from '../SpecularButton';
-import ShinyText from '../ShinyText';
 
 interface Props {
   eventId: string;
@@ -16,10 +14,7 @@ export default function CommentForm({ eventId }: Props) {
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const text = body.trim();
-    if (!text) {
-      setError('Напишіть коментар.');
-      return;
-    }
+    if (!text) { setError('Напишіть коментар.'); return; }
     setBusy(true);
     setError('');
     try {
@@ -50,28 +45,24 @@ export default function CommentForm({ eventId }: Props) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <ShinyText
-        text="Залиш свій слід"
-        color="#10e0ff"
-        shineColor="#ff2d87"
-        speed={2.6}
-        trigger="loop"
-        className="text-[11px] uppercase tracking-[0.2em]"
-      />
-      <textarea
-        value={body}
-        onChange={(event) => setBody(event.target.value)}
-        maxLength={2000}
-        rows={3}
-        placeholder="Напишіть щось про подію…"
-        aria-label="Ваш коментар"
-        className="vc-field"
-      />
-      {error ? <p role="alert" className="text-sm text-[var(--vc-pink)]">{error}</p> : null}
-      <SpecularButton type="submit" size="sm" disabled={busy} tint="#ff2d87" textColor="#07020f">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <p className="eyebrow">Залиш свій слід</p>
+      <label className="field-label">
+        <span>Ваш коментар</span>
+        <textarea
+          value={body}
+          onChange={(event) => setBody(event.target.value)}
+          maxLength={2000}
+          rows={3}
+          placeholder="Напишіть щось про подію…"
+          aria-label="Ваш коментар"
+          className="field"
+        />
+      </label>
+      {error ? <p role="alert" className="notice notice--error">{error}</p> : null}
+      <button type="submit" className="pill pill--primary self-start" disabled={busy}>
         {busy ? 'Надсилаємо…' : 'Коментувати'}
-      </SpecularButton>
+      </button>
     </form>
   );
 }

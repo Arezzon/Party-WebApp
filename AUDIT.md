@@ -1,39 +1,45 @@
-# Тусовка — повна перебудова UI (clean slate)
+# Тусовка — перебудова UI за відкритим референсом
 
 Дата: 2026-11-25
 
-## Що зробив
+## Референс
 
-Весь попередній UI-шар видалено з нуля: `src/components/bits/*`, `Header.astro`, `SiteEffects.astro`, старі форми, `Layout.astro`, `global.css` і всі сторінки. Бекенд (`src/lib/*`, `src/pages/api/*`, `middleware.ts`) не змінено — контракти, валідація, idempotency, сесії й захист Origin лишились недоторканими.
+- Візуальна мова: `DavidHDev/rbp-portfolio` (calm black-and-white, Geist + Fraunces, site frame, pill nav, flow shader).
+- Розстановка елементів: skill `ui-ux-pro-max` (`--design-system`, домен `ux`, стек `astro`).
+  Застосовано: Hero-Centric / Minimalism & Swiss Style, one primary CTA, mobile-first,
+  без горизонтального скролу, фіксована шапка з компенсацією `pt`, тач-цілі ≥44px,
+  writable measure 65–75ch, активний стан навігації, smooth scroll, reduced-motion.
 
-Новий UI зібраний у `src/components/site/*` і побудований тільки на готових компонентах React Bits:
+## Що зроблено
 
-- **Шапка** — `PillNav` + `NeonLogo`, одна на всі сторінки, з `whitespace-nowrap` на 375px.
-- **Підвал** — `GlassIcons`.
-- **Заголовки** — `SplitText`, `ShinyText`.
-- **Фон** — `Grainient` (WebGL), `Noise`, CSS-сонце й перспективна сітка.
-- **Головна** — `PromoStrip` (`HoloMosaic`, `SpecularButton`), `EventExplorer` (`CurvedInput`, `AnimatedList`, `Counter`).
-- **Подія** — `BorderGlow`, `SpotlightCard`, `Counter`, `AnimatedList`, `FadeContent`, `SpecularButton`; додано блок коментарів із формами скарги/видалення.
-- **Профіль** — `ProfileCard`, `AnimatedList`, `BorderGlow`, `FadeContent`, `SpecularButton`.
-- **Форми** — `AnimatedContent`, `SpotlightCard`, `SpecularButton`; багатопольові поля лишаються нативними (у бібліотеці немає готового багатопольового form-компонента), стилізовані через `.vc-field`.
-- **Правила** — `NeonGlyphs` + `SiteHeading`.
+Попередній неоновий UI (Vice City) повністю знесено. Бекенд не змінено: контракти,
+валідація, idempotency, сесії, Origin/CSRF — ті самі.
 
-## Стиль
-
-Vice City: нічний фіолет `#07020f`, неоновий рожевий `#ff2d87`, океан-ціан `#10e0ff`, бузок `#b45cff`. Токени винесені в `global.css`; усі кольори компонентів передані явно через пропси.
-
-## Виправлені проблеми минулої версії
-
-- Субтитр більше не обривається (`DecryptedText` з `maxIterations={10}` прибрано — тепер `ShinyText`).
-- Жодних дубльованих шапок/підвалів і стилів, що випадають.
-- Коментарі нарешті рендеряться на сторінці події (раніше API був, UI не було).
+- **Дизайн-система** — світла тема `#ffffff` / `#0a0a0a`, темна `#0a0a0a` / `#fafafa`,
+  Geist Sans/Mono + Fraunces italic, пілюлі `999px`, 4/8px ритм, токени в `global.css`.
+- **Каркас** — 10px frame rails + corner marks, skip-link, плавний перехід теми через
+  `startViewTransition`, вибір теми з `localStorage` / системної налаштування.
+- **Шапка** — одна плаваюча пілюля на всіх сторінках: бренд, 4 посилання, повзункий
+  індикатор активної сторінки, круглий перемикач теми. На 375px бренд ховається,
+  шапка вміщується в 338px без обрізання.
+- **Фон** — власний WebGL flow-шейдер на raw WebGL (без OGL), монохромний, пауза на
+  прихованій вкладці, статичний кадр при `prefers-reduced-motion`.
+- **Головна** — hero «Знайди своїх. *після заходу.*», одна головна CTA, вторинна
+ ghost-кнопка, три факти, афіша у вигляді редакційних рядків із датою, назвою,
+  кількістю вільних місць і стрілкою; пошук через GET-форму.
+- **Подія** — двоколонковий layout, обкладинка 4:5, мета-сітка, RSVP/скасування,
+  учасники пілюлями, коментарі зі скаргою/видаленням і жива форма коментаря.
+- **Форми й профіль** — ті самі токени: підписані поля, помилки біля поля,
+  пілюлі-кнопки, список створених/відвіданих подій, видалення акаунта.
 
 ## Перевірка
 
-- `astro check` — 0 errors
-- `npm test` — 26/26
-- `npm run build` — success
-- `tests/self-audit.mjs` через живий HTTP — SELF-AUDIT OK (реєстрація, логін, створення події, 403 чужим, profile, CSRF, 404)
-- Браузер: headless Chromium, усі публічні сторінки гідруються (0 негідрованих острівців), фон і навігація на місці, горизонтального переповнення немає; захищені сторінки `/profile`, `/events/new`, `/events/:id`, `/events/:id/edit` — 200 з валідною сесією.
-- Конвертація часу: `2027-12-24T18:00` (Київ) → `2027-12-24T16:00:00Z`, літній час → `+3`.
-- Публічний GET 200, POST 303.
+- `astro check` — 0 errors, `npm test` — 28/28, `npm run build` — success.
+- `self-audit.mjs` через живий HTTP — SELF-AUDIT OK.
+- Браузер: hero/nav не перекриваються, canvas 765×920 малюється, індикатор навігації
+  на активному пункті, усі сторінки без горизонтального переповнення, 0 негідрованих
+  острівців. Перемикання теми: `#ffffff ↔ #0a0a0a`, збереження в localStorage.
+- Мобільний 375px: шапка x=18, width=338, toggle 40×40, CTA 46px, рядки подій 146px,
+  `scrollWidth === innerWidth === 375`.
+- Коментар через UI реально створюється і з'являється після reload.
+- Cloudflared GET 200, POST 303.

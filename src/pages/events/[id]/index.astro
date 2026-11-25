@@ -1,7 +1,7 @@
 ---
 export const prerender = false;
 import Layout from '../../../layouts/Layout.astro';
-import EventDetail from '../../../components/site/EventDetail';
+import EventDetail from '../../../components/site/EventDetail.astro';
 import { requireUser } from '../../../lib/auth.ts';
 import { getDb } from '../../../lib/db.ts';
 import { canViewEventFromRequest, getAttendees, getEvent, rsvpCount } from '../../../lib/events.ts';
@@ -42,7 +42,6 @@ const idempotencyKey = typeof crypto !== 'undefined' && typeof crypto.randomUUID
 
 <Layout title={`${event.title} — Тусовка`}>
   <EventDetail
-    client:load
     id={event.id}
     title={event.title}
     date={formatKyiv(event.startsAt)}

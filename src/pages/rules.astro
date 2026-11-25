@@ -1,37 +1,17 @@
 ---
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
-import SiteHeading from '../components/site/SiteHeading';
-import NeonGlyphs from '../components/NeonGlyphs';
 ---
 
 <Layout title="Правила сервісу — Тусовка">
-  <div class="mx-auto flex max-w-3xl flex-col gap-6">
-    <div class="h-32 overflow-hidden rounded-2xl border border-[var(--vc-cyan)]/25" aria-hidden="true">
-      <NeonGlyphs
-        client:load
-        colors={['#ff2d87', '#10e0ff', '#b45cff']}
-        characters={'ТУСОВКА01{}/"'}
-        fontFamily="system-ui, sans-serif"
-        cellSize={18}
-        depth={10}
-        tilt={22}
-        speed={0.16}
-        density={0.35}
-        glow={0.7}
-        flicker={0.3}
-        scramble={0.25}
-        opacity={0.34}
-        fade={0.65}
-        intro
-        mouseInteraction={false}
-        burstOnClick={false}
-      />
-    </div>
+  <div class="mx-auto flex max-w-[760px] flex-col gap-10">
+    <header>
+      <p class="eyebrow">Код міста</p>
+      <h1 class="display mt-4 text-4xl sm:text-5xl">Правила сервісу</h1>
+      <p class="prose-calm mt-4">«Тусовка» — місце для безпечних зустрічей.</p>
+    </header>
 
-    <SiteHeading client:load title="Правила сервісу" subtitle="«Тусовка» — місце для безпечних зустрічей." eyebrow="Код міста" />
-
-    <section class="vc-panel p-6">
+    <section class="card p-6">
       <h2 class="mb-2 text-lg font-semibold">1. Повага до учасників</h2>
       <ul class="list-disc pl-5 text-sm text-muted-foreground">
         <li>Не публікуйте образи, погрози, дискримінацію, спам і рекламу.</li>
@@ -40,7 +20,7 @@ import NeonGlyphs from '../components/NeonGlyphs';
       </ul>
     </section>
 
-    <section class="vc-panel p-6">
+    <section class="card p-6">
       <h2 class="mb-2 text-lg font-semibold">2. Події та записи</h2>
       <ul class="list-disc pl-5 text-sm text-muted-foreground">
         <li>Вказуйте правдиву дату, опис і кількість місць.</li>
@@ -49,7 +29,7 @@ import NeonGlyphs from '../components/NeonGlyphs';
       </ul>
     </section>
 
-    <section class="vc-panel p-6">
+    <section class="card p-6">
       <h2 class="mb-2 text-lg font-semibold">3. Скарги й видалення коментарів</h2>
       <p class="text-sm text-muted-foreground">
         Якщо коментар порушує правила, натисніть «Поскаржитися» на сторінці події та вкажіть причину.
@@ -57,12 +37,12 @@ import NeonGlyphs from '../components/NeonGlyphs';
       </p>
     </section>
 
-    <section class="vc-panel p-6">
+    <section class="card p-6">
       <h2 class="mb-2 text-lg font-semibold">4. Ваші дані</h2>
       <p class="text-sm text-muted-foreground">
-        Ви можете змінити ім’я або видалити акаунт у <a href="/profile" class="vc-link">профілі</a>.
+        Ви можете змінити ім’я або видалити акаунт у <a href="/profile" class="link">профілі</a>.
         Після видалення сесії, події та записи знищуються, а коментарі знеособлюються.
-        Детальніше — у <a href="/privacy" class="vc-link">політиці конфіденційності</a>.
+        Детальніше — у <a href="/privacy" class="link">політиці конфіденційності</a>.
       </p>
     </section>
   </div>

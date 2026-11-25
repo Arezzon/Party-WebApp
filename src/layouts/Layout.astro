@@ -1,8 +1,8 @@
 ---
 import '../styles/global.css';
-import SiteChrome from '../components/site/SiteChrome';
-import Background from '../components/site/Background';
-import SiteFooter from '../components/site/SiteFooter';
+import FlowBackdrop from '../components/site/FlowBackdrop.astro';
+import SiteHeader from '../components/site/SiteHeader.astro';
+import SiteFooter from '../components/site/SiteFooter.astro';
 
 interface Props {
   title?: string;
@@ -26,15 +26,30 @@ const {
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
     <title>{title}</title>
+    <script is:inline>
+      (() => {
+        try {
+          const saved = localStorage.getItem('tusivka-theme');
+          const dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.classList.toggle('dark', dark);
+        } catch {}
+      })();
+    </script>
   </head>
   <body class="min-h-screen">
-    <Background client:load />
-    <SiteChrome client:load activeHref={Astro.url.pathname} />
-    <div class="relative z-10">
-      <main class="mx-auto w-full max-w-5xl px-4 pb-12 pt-10 sm:px-6">
-        <slot />
-      </main>
-      <SiteFooter client:load />
-    </div>
+    <div class="site-frame site-frame--top" aria-hidden="true"></div>
+    <div class="site-frame site-frame--left" aria-hidden="true"></div>
+    <div class="site-frame site-frame--right" aria-hidden="true"></div>
+    <svg class="site-corner site-corner--tl" width="50" height="50" viewBox="0 0 50 50" fill="none" aria-hidden="true"><path d="M0 0C-.008 37.3 8.996 50.012 50 50H0V0Z" fill="currentColor"/></svg>
+    <svg class="site-corner site-corner--tr" width="50" height="50" viewBox="0 0 50 50" fill="none" aria-hidden="true"><path d="M0 0C-.008 37.3 8.996 50.012 50 50H0V0Z" fill="currentColor"/></svg>
+
+    <a class="skip-link" href="#main">До вмісту</a>
+    <FlowBackdrop />
+    <SiteHeader active={Astro.url.pathname} />
+
+    <main id="main" class="relative z-10 mx-auto w-full max-w-[1100px] px-5 pb-24 pt-32 sm:px-10 sm:pt-44">
+      <slot />
+    </main>
+    <SiteFooter />
   </body>
 </html>

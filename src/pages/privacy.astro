@@ -1,24 +1,27 @@
 ---
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
-import SiteHeading from '../components/site/SiteHeading';
 
 const title = 'Політика конфіденційності';
 ---
 
 <Layout title={title}>
-  <div class="mx-auto flex max-w-3xl flex-col gap-6">
-    <SiteHeading client:load title={title} subtitle="Прозоро, по-сусідськи, без зайвих даних." eyebrow="Ваші дані — ваша справа" />
+  <div class="mx-auto flex max-w-[760px] flex-col gap-10">
+    <header>
+      <p class="eyebrow">Ваші дані — ваша справа</p>
+      <h1 class="display mt-4 text-4xl sm:text-5xl">{title}</h1>
+      <p class="prose-calm mt-4">Прозоро, по-сусідськи, без зайвих даних.</p>
+    </header>
 
     <div class="flex flex-col gap-5 text-sm leading-relaxed text-muted-foreground">
-      <section class="vc-panel p-6">
+      <section class="card p-6">
         <h2 class="mb-1 text-lg font-semibold text-foreground">1. Володілець даних</h2>
         <p>
           Володільцем персональних даних є адміністрація сервісу «Тусовка».
-          Контакт для питань щодо даних: <a class="vc-link" href="mailto:privacy@tusivka.local">privacy@tusivka.local</a>.
+          Контакт для питань щодо даних: <a class="link" href="mailto:privacy@tusivka.local">privacy@tusivka.local</a>.
         </p>
       </section>
-      <section class="vc-panel p-6">
+      <section class="card p-6">
         <h2 class="mb-1 text-lg font-semibold text-foreground">2. Мета збирання</h2>
         <p>
           Ми збираємо мінімально необхідні дані — електронну пошту, ім’я та пароль у вигляді
@@ -27,7 +30,7 @@ const title = 'Політика конфіденційності';
           підтримки входу.
         </p>
       </section>
-      <section class="vc-panel p-6">
+      <section class="card p-6">
         <h2 class="mb-1 text-lg font-semibold text-foreground">3. Обсяг і зберігання</h2>
         <p>
           Зберігаються: email, ім’я, хеш пароля, дати створення, дані про події, записи участі
@@ -35,14 +38,14 @@ const title = 'Політика конфіденційності';
           Імена файлів ігноруються. Пароль у відкритому вигляді ніколи не зберігається.
         </p>
       </section>
-      <section class="vc-panel p-6">
+      <section class="card p-6">
         <h2 class="mb-1 text-lg font-semibold text-foreground">4. Передача третім особам</h2>
         <p>
           Ми не передаємо персональні дані третім особам і не використовуємо сторонні
           скрипти, аналітику чи зовнішні шрифти. Дані зберігаються локально на сервері застосунку.
         </p>
       </section>
-      <section class="vc-panel p-6">
+      <section class="card p-6">
         <h2 class="mb-1 text-lg font-semibold text-foreground">5. Ваші права</h2>
         <p>
           Відповідно до статті 12 Закону України «Про захист персональних даних» ви маєте право
@@ -51,7 +54,7 @@ const title = 'Політика конфіденційності';
           події та записи участі, а коментарі знеособлюються.
         </p>
       </section>
-      <section class="vc-panel p-6">
+      <section class="card p-6">
         <h2 class="mb-1 text-lg font-semibold text-foreground">6. Безпека</h2>
         <p>
           Сесійні cookie мають прапорці HttpOnly та SameSite=Lax. Мутації захищені перевіркою
@@ -61,6 +64,6 @@ const title = 'Політика конфіденційності';
       </section>
     </div>
 
-    <p class="text-sm"><a href="/" class="vc-link">На головну</a></p>
+    <p class="text-sm"><a href="/" class="link">На головну</a></p>
   </div>
 </Layout>

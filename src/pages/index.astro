@@ -2,9 +2,6 @@
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
 import { getDb } from '../lib/db';
-import SiteHeading from '../components/site/SiteHeading';
-import PromoStrip from '../components/site/PromoStrip';
-import EventExplorer, { type EventItem } from '../components/site/EventExplorer';
 
 const q = (Astro.url.searchParams.get('q') ?? '').trim();
 const needle = q.toLocaleLowerCase('uk-UA');
@@ -36,38 +33,117 @@ const filtered = needle
   ? rows.filter((event) => String(event.title ?? '').toLocaleLowerCase('uk-UA').includes(needle))
   : rows;
 
-const fmt = new Intl.DateTimeFormat('uk-UA', {
-  timeZone: 'Europe/Kyiv',
-  dateStyle: 'medium',
-  timeStyle: 'short'
+const dateFmt = new Intl.DateTimeFormat('uk-UA', {
+  timeZone: 'Europe/Kyiv', dateStyle: 'medium', timeStyle: 'short'
+});
+const partFmt = new Intl.DateTimeFormat('uk-UA', {
+  timeZone: 'Europe/Kyiv', day: '2-digit', month: 'short'
 });
 
-const events: EventItem[] = filtered.map((event) => ({
-  id: event.id,
-  title: event.title,
-  date: fmt.format(new Date(event.starts_at)),
-  free: Math.max(0, event.places - event.taken),
-  cover: event.has_cover ? `/events/${event.id}/cover` : null
-}));
+const events = filtered.map((event) => {
+  const date = new Date(event.starts_at);
+  const parts = partFmt.formatToParts(date);
+  return {
+    id: event.id,
+    title: String(event.title ?? ''),
+    date: dateFmt.format(date),
+    day: parts.find((p) => p.type === 'day')?.value ?? '',
+    month: parts.find((p) => p.type === 'month')?.value ?? '',
+    free: Math.max(0, event.places - event.taken),
+    cover: event.has_cover ? `/events/${event.id}/cover` : null
+  };
+});
 ---
 
-<Layout title="Тусовка — події">
-  <div class="flex flex-col gap-8">
-    <SiteHeading
-      client:load
-      eyebrow="Vice City · нічне життя"
-      title="Події після заходу"
-      subtitle="Обирай своє. Час указано за Києвом."
-    />
+<Layout title="Тусовка — події" description="Події та зустрічі у Києві. Обирай своє, записуйся, приходь.">
+  <section class="fade-up">
+    <p class="eyebrow">Київ · події після заходу</p>
+    <h1 class="display mt-5 max-w-[15ch] text-[clamp(2.6rem,6.2vw,4.6rem)]">
+      Знайди своїх.<br />
+      <span class="serif">після заходу.</span>
+    </h1>
+    <p class="mt-6 max-w-[38ch] text-lg leading-relaxed text-muted-foreground sm:text-xl">
+      Короткий список подій, заради яких варто вийти з дому. Обирай, записуйся, приходь.
+    </p>
+    <div class="mt-8 flex flex-wrap items-center gap-3">
+      <a href="/events/new" class="pill pill--primary pill--lg">
+        Створити подію <span aria-hidden="true">→</span>
+      </a>
+      <a href="#events" class="pill pill--ghost pill--lg">Дивитись афішу</a>
+    </div>
+
+    <div class="mt-16 grid gap-6 border-t border-border pt-6 sm:grid-cols-3">
+      <div>
+        <p class="eyebrow">01 / час</p>
+        <p class="mt-2 text-sm">Усі події — за київським часом.</p>
+      </div>
+      <div>
+        <p class="eyebrow">02 / доступ</p>
+        <p class="mt-2 text-sm">Приватні події — тільки за посиланням.</p>
+      </div>
+      <div>
+        <p class="eyebrow">03 / люди</p>
+        <p class="mt-2 text-sm">Коментарі й учасники — на кожній події.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="events" class="mt-28 scroll-mt-32">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="eyebrow">Афіша</p>
+        <h2 class="display mt-2 text-3xl sm:text-4xl">Найближчі події</h2>
+      </div>
+      <p class="eyebrow">{events.length} подій</p>
+    </div>
+
+    <form method="get" action="/" class="mt-8 flex flex-wrap gap-3">
+      <input
+        class="field max-w-sm flex-1"
+        type="search"
+        name="q"
+        value={q}
+        placeholder="Пошук за назвою"
+        aria-label="Пошук подій за назвою"
+      />
+      <button class="pill pill--ghost" type="submit">Знайти</button>
+    </form>
 
     {q ? (
-      <p class="text-sm text-muted-foreground">
-        Результати пошуку: <span class="vc-chip">«{q}»</span>
+      <p class="mt-5 text-sm text-muted-foreground">
+        Результати для «{q}» · <a class="link" href="/">скинути</a>
       </p>
-    ) : (
-      <PromoStrip client:load href="/events/new" />
-    )}
+    ) : null}
 
-    <EventExplorer client:load query={q} events={events} />
-  </div>
+    <div class="mt-8">
+      {events.length ? (
+        events.map((event) => (
+          <a class="event-row group" href={`/events/${event.id}`}>
+            <span class="event-date" aria-hidden="true">
+              <span class="event-date__day">{event.day}</span>
+              <span class="event-date__mon">{event.month}</span>
+            </span>
+            <span class="min-w-0">
+              <span class="block truncate text-lg font-medium tracking-tight sm:text-xl">{event.title}</span>
+              <span class="mt-1 block text-xs text-muted-foreground">{event.date}</span>
+              <span class="mt-1 block text-xs text-muted-foreground sm:hidden">
+                {event.free > 0 ? `вільно ${event.free} місць` : 'місць немає'}
+              </span>
+            </span>
+            <span class="event-row__meta mono hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
+              <span class="h-1.5 w-1.5 rounded-full" style={`background:${event.free > 0 ? 'var(--live)' : 'var(--border)'}`} aria-hidden="true"></span>
+              {event.free > 0 ? `вільно ${event.free}` : 'повно'}
+            </span>
+            <span class="event-row__arrow text-lg" aria-hidden="true">→</span>
+          </a>
+        ))
+      ) : (
+        <div class="card dots flex flex-col items-center gap-4 px-6 py-16 text-center">
+          <p class="eyebrow">Порожньо</p>
+          <p class="text-lg">Подій поки немає. Може, першу зробиш ти?</p>
+          <a href="/events/new" class="pill pill--primary">Створити подію</a>
+        </div>
+      )}
+    </div>
+  </section>
 </Layout>

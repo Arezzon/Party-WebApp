@@ -1,0 +1,147 @@
+---
+import CommentForm from './CommentForm';
+
+export interface CommentItem {
+  id: string;
+  body: string;
+  author: string;
+  authorId: string;
+  createdAt: string;
+}
+
+interface Props {
+  id: string;
+  title: string;
+  date: string;
+  description: string;
+  left: number;
+  places: number;
+  isPrivate: boolean;
+  cover: string;
+  user: boolean;
+  isAuthor: boolean;
+  going: boolean;
+  idempotencyKey: string;
+  attendees: string[];
+  comments: CommentItem[];
+  userId: string;
+}
+
+const props = Astro.props;
+---
+
+<div class="flex flex-col gap-14">
+  <div class="fade-up grid gap-10 lg:grid-cols-[minmax(0,1fr)_380px]">
+    <div class="order-2 lg:order-1">
+      <p class="eyebrow">Подія · {props.isPrivate ? 'приватна' : 'публічна'}</p>
+      <h1 class="display mt-4 text-4xl sm:text-5xl">{props.title}</h1>
+      <p class="mono mt-5 text-sm text-muted-foreground">{props.date}</p>
+
+      <div class="mt-8 grid gap-6 border-y border-border py-6 sm:grid-cols-2">
+        <div>
+          <p class="eyebrow">Вільних місць</p>
+          <p class="mt-2 flex items-center gap-2 text-2xl">
+            <span class="h-2 w-2 rounded-full" style={`background:${props.left > 0 ? 'var(--live)' : 'var(--border)'}`} aria-hidden="true"></span>
+            {props.left} <span class="text-base text-muted-foreground">з {props.places}</span>
+          </p>
+        </div>
+        <div>
+          <p class="eyebrow">Формат</p>
+          <p class="mt-2 text-base">{props.isPrivate ? 'За запрошенням' : 'Відкрита для всіх'}</p>
+        </div>
+      </div>
+
+      {props.description ? (
+        <div class="prose-calm mt-8 whitespace-pre-wrap">{props.description}</div>
+      ) : null}
+
+      <div class="mt-10 flex flex-wrap items-center gap-3">
+        {props.user && !props.isAuthor && props.going ? (
+          <form method="post" action={`/api/events/${props.id}/unrsvp`}>
+            <button class="pill pill--ghost" type="submit">Скасувати участь</button>
+          </form>
+        ) : null}
+        {props.user && !props.isAuthor && !props.going ? (
+          <form method="post" action={`/api/events/${props.id}/rsvp`}>
+            <input type="hidden" name="idempotencyKey" value={props.idempotencyKey} />
+            <button class="pill pill--primary" type="submit" disabled={props.left === 0}>
+              Іду <span aria-hidden="true">→</span>
+            </button>
+          </form>
+        ) : null}
+        {!props.user ? (
+          <a href={`/login?next=${encodeURIComponent(`/events/${props.id}`)}`} class="pill pill--primary">
+            Увійдіть, щоб записатися
+          </a>
+        ) : null}
+        {props.isAuthor ? (
+          <a href={`/events/${props.id}/edit`} class="pill pill--ghost">Редагувати подію</a>
+        ) : null}
+      </div>
+    </div>
+
+    <div class="order-1 lg:order-2">
+      <div class="card overflow-hidden p-2">
+        <img src={props.cover} alt={`Обкладинка події «${props.title}»`} loading="eager" class="aspect-[4/5] w-full rounded-xl object-cover" />
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <p class="eyebrow">Учасники · {props.attendees.length}</p>
+    {props.attendees.length ? (
+      <ul class="mt-5 flex flex-wrap gap-2">
+        {props.attendees.map((name) => (
+          <li class="rounded-full border border-border px-4 py-2 text-sm">{name}</li>
+        ))}
+      </ul>
+    ) : (
+      <p class="mt-5 text-sm text-muted-foreground">Поки ніхто не записався. Станьте першим.</p>
+    )}
+  </section>
+
+  <section class="grid gap-10 border-t border-border pt-10 md:grid-cols-2">
+    <div>
+      <p class="eyebrow">Коментарі · {props.comments.length}</p>
+      {props.comments.length ? (
+        <ul class="mt-5 flex flex-col gap-5">
+          {props.comments.map((comment) => (
+            <li class="border-b border-border pb-5">
+              <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <span class="font-medium">{comment.author}</span>
+                <span class="mono text-xs text-muted-foreground">{comment.createdAt}</span>
+              </div>
+              <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{comment.body}</p>
+              {props.user ? (
+                <div class="mt-3 flex flex-wrap gap-4 text-xs">
+                  <form method="post" action={`/api/comments/${comment.id}/report`}>
+                    <input type="hidden" name="reason" value="Порушення правил спільноти" />
+                    <button type="submit" class="link">Поскаржитися</button>
+                  </form>
+                  {(props.isAuthor || comment.authorId === props.userId) ? (
+                    <form method="post" action={`/api/comments/${comment.id}/delete`}>
+                      <button type="submit" class="link">Видалити</button>
+                    </form>
+                  ) : null}
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="mt-5 text-sm text-muted-foreground">Тиша. Ідеальний момент щось написати.</p>
+      )}
+    </div>
+
+    <div class="card p-6">
+      {props.user ? (
+        <CommentForm client:load eventId={props.id} />
+      ) : (
+        <div class="flex h-full flex-col justify-center gap-4">
+          <p class="text-sm text-muted-foreground">Увійдіть, щоб залишити коментар.</p>
+          <a href={`/login?next=${encodeURIComponent(`/events/${props.id}`)}`} class="pill pill--ghost self-start">Увійти</a>
+        </div>
+      )}
+    </div>
+  </section>
+</div>
