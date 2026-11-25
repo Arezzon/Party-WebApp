@@ -15,19 +15,17 @@ pnpm-debug.log*
 
 # environment variables
 .env
+.env.*
+!.env.example
 .dev.vars
 .wrangler/
-.env.production
+
+# local data & secrets
+data/
+.hermes/
 
 # macOS-specific files
 .DS_Store
 
 # jetbrains setting folder
 .idea/
-
-# local data & secrets
-data/
-.env
-.env.*
-!.env.example
-.hermes/
