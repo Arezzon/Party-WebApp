@@ -135,7 +135,7 @@ const events = filtered.map((event) => {
             </span>
             <span class="min-w-0">
               <span class="block truncate text-lg font-medium tracking-tight sm:text-xl">{event.title}</span>
-              <span class="mt-1 block text-xs text-muted-foreground">{event.date}</span>
+              <span class="mt-1 hidden text-xs text-muted-foreground sm:block">{event.date}</span>
               <span class="mt-1 block text-xs text-muted-foreground sm:hidden">
                 {event.date} · {event.free > 0 ? `вільно ${event.free} місць` : 'місць немає'}
               </span>

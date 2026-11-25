@@ -237,6 +237,21 @@ test('шапка на 375px: підписи не ламаються по скл�
   assert.doesNotMatch(nav + css, /word-break:\s*break-all/, 'не можна рвати слова по складах');
 });
 
+test('сітка подій на мобільному: дата прихована, стрілка в першому рядку', async () => {
+  const css = await readFile(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  assert.match(css, /\.event-row \{[^}]*grid-template-columns:\s*48px minmax\(0, 1fr\) 20px/, 'на мобільному має бути 3 колонки');
+  assert.match(css, /\.event-row \.event-row__date \{\s*display:\s*none/, 'дата має бути прихована з більшою специфічністю, ніж .event-date');
+  assert.match(css, /\.event-row__arrow \{[^}]*justify-self:\s*end/, 'стрілка має бути в останній колонці');
+  const home = await readFile(new URL('../src/pages/index.astro', import.meta.url), 'utf8');
+  assert.match(home, /hidden text-xs text-muted-foreground sm:block/, 'дубль дати на мобільному має бути прихований');
+});
+
+test('створення події доступне тільки після await requireUser', async () => {
+  const page = await readFile(new URL('../src/pages/events/new.astro', import.meta.url), 'utf8');
+  assert.match(page, /await requireUser\(Astro\)/, 'перевірка сесії має бути асинхронною');
+  assert.match(page, /Astro\.redirect\('\/login\?next=\/events\/new'/, 'анонім має йти на логін');
+});
+
 test('валідний PNG зберігається оригіналом з MIME за magic bytes', async () => {
   const images: any = await import('../src/lib/images');
   const png = Buffer.from(
