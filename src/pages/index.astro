@@ -119,7 +119,12 @@ const events = filtered.map((event) => {
       {events.length ? (
         events.map((event) => (
           <a class="event-row group" href={`/events/${event.id}`}>
-            <span class="event-date" aria-hidden="true">
+            <span class="event-row__cover" aria-hidden="true">
+              {event.cover ? (
+                <img src={event.cover} alt="" width="56" height="56" loading="lazy" decoding="async" />
+              ) : null}
+            </span>
+            <span class="event-date event-row__date" aria-hidden="true">
               <span class="event-date__day">{event.day}</span>
               <span class="event-date__mon">{event.month}</span>
             </span>
@@ -127,7 +132,7 @@ const events = filtered.map((event) => {
               <span class="block truncate text-lg font-medium tracking-tight sm:text-xl">{event.title}</span>
               <span class="mt-1 block text-xs text-muted-foreground">{event.date}</span>
               <span class="mt-1 block text-xs text-muted-foreground sm:hidden">
-                {event.free > 0 ? `вільно ${event.free} місць` : 'місць немає'}
+                {event.date} · {event.free > 0 ? `вільно ${event.free} місць` : 'місць немає'}
               </span>
             </span>
             <span class="event-row__meta mono hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
