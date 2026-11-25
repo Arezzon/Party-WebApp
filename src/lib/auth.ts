@@ -102,20 +102,16 @@ const IS_DEV_NODE = !IS_WORKERS_RUNTIME && typeof (globalThis as any).process?.r
 
 export const SCRYPT_CONCURRENCY = 4;
 let activeScrypt = 0;
-const scryptWaiters: Array<() => void> = [];
 
-function acquireScryptSlot(): Promise<void> {
-  if (activeScrypt < SCRYPT_CONCURRENCY) {
-    activeScrypt += 1;
-    return Promise.resolve();
+async function acquireScryptSlot(): Promise<void> {
+  while (activeScrypt >= SCRYPT_CONCURRENCY) {
+    await new Promise((resolve) => setTimeout(resolve, 2));
   }
-  return new Promise((resolve) => scryptWaiters.push(resolve));
+  activeScrypt += 1;
 }
 
 function releaseScryptSlot(): void {
-  const next = scryptWaiters.shift();
-  if (next) next();
-  else activeScrypt -= 1;
+  activeScrypt -= 1;
 }
 
 async function deriveAsync(
