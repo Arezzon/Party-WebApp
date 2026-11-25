@@ -11,7 +11,7 @@ let events: typeof import('../src/lib/events.ts');
 let auth: typeof import('../src/lib/auth.ts');
 let dbModule: typeof import('../src/lib/db.ts');
 
-import { detectImageMime } from '../src/lib/validation';
+let validation: typeof import('../src/lib/validation');
 
 /** Minimal valid 1×1 PNG. Filename and MIME are deliberately misleading. */
 const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVQImWOwbvpm3fSNAUIBACy2Bs0ifrYRAAAAAElFTkSuQmCC';
@@ -46,6 +46,7 @@ before(async () => {
   events = await import('../src/lib/events.ts');
   auth = await import('../src/lib/auth.ts');
   dbModule = await import('../src/lib/db.ts');
+  validation = await import('../src/lib/validation');
 });
 
 async function author() {
@@ -72,7 +73,7 @@ test('створення події: UUID, 32 байти інвайту, обк�
   const bytes = new Uint8Array(event.coverBlob!);
   // Workers не перекодуває: байти обкладинки зберігаються як є.
   assert.deepEqual(Array.from(bytes.slice(0, pngBytes.length)), Array.from(pngBytes), 'PNG зберігається без змін');
-  assert.equal(detectImageMime(bytes), 'image/png');
+  assert.equal(validation.detectImageMime(bytes), 'image/png');
   assert.ok(
     ['image/png', 'image/jpeg', 'image/webp'].includes(String(event.coverMime)),
     'разом з обкладинкою має зберігатися безпечний MIME зображення'

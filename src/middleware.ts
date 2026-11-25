@@ -76,7 +76,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
     let pathname = '';
     try { pathname = new URL(request.url).pathname; } catch { /* ignore */ }
-    if (pathname === '/login' && isRateLimited(clientKey(request))) {
+    if (pathname === '/login' && await isRateLimited(clientKey(request))) {
       return friendlyError(429, LOGIN_LIMIT_MESSAGE);
     }
   }

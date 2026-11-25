@@ -4,7 +4,7 @@ import Layout from '../../../layouts/Layout.astro';
 import EventDetail from '../../../components/site/EventDetail.astro';
 import { requireUser } from '../../../lib/auth.ts';
 import { getDb } from '../../../lib/db.ts';
-import { canViewEventFromRequest, getAttendees, getEvent, rsvpCount } from '../../../lib/events.ts';
+import { canViewEventFromRequest, coverUrl, getAttendees, getEvent, rsvpCount } from '../../../lib/events.ts';
 import { formatKyiv } from '../../../lib/timezone.ts';
 
 const id = Astro.params.id ?? '';
@@ -57,7 +57,7 @@ const attendees = attendeeRows.map((person: { name: string }) => String(person.n
     left={left}
     places={event.places}
     isPrivate={event.visibility === 'private'}
-    cover={`/events/${event.id}/cover`}
+    cover={coverUrl(event)}
     user={Boolean(user)}
     isAuthor={isAuthor}
     going={going}

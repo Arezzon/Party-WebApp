@@ -32,7 +32,7 @@ if (Astro.request.method === 'POST') {
 
   if (!error) {
     const limitKey = `login:${clientKey(Astro.request)}`;
-    const limit = checkLoginRateLimit(limitKey);
+    const limit = await checkLoginRateLimit(limitKey);
     if (!limit.allowed) {
       error = LOGIN_LIMIT_MESSAGE;
       Astro.response.status = 429;
@@ -41,11 +41,11 @@ if (Astro.request.method === 'POST') {
       const parsed = loginSchema.safeParse({ email, password });
       const user = parsed.success ? await authenticateUser(parsed.data.email, password) : null;
       if (!user) {
-        recordFailedLogin(limitKey);
+        await recordFailedLogin(limitKey);
         error = 'Невірний email або пароль.';
         Astro.response.status = 400;
       } else {
-        clearLoginFailures(limitKey);
+        await clearLoginFailures(limitKey);
         const session = await createSession(user.id);
         setSessionCookie(Astro.cookies, session.token);
         const destination = next.startsWith('/') && !next.startsWith('//') ? next : '/';

@@ -376,29 +376,30 @@ export async function requireUserOrRedirect(context: any, path = '/login'): Prom
 
 /* ----------------------------- rate limiting ---------------------------- */
 
-const failedLogins = new Map<string, number[]>();
-
-function prune(key: string, now: number): number[] {
-  const timestamps = (failedLogins.get(key) ?? []).filter((time) => now - time < LOGIN_WINDOW_MS);
-  if (timestamps.length) failedLogins.set(key, timestamps);
-  else failedLogins.delete(key);
-  return timestamps;
+/** Shared, durable login-attempt counter. Isolate-local Maps do not work on Workers. */
+async function attemptsFor(key: string, now: number): Promise<number[]> {
+  const db = await getDb();
+  await db.prepare('DELETE FROM LoginAttempts WHERE created_at <= ?').run(new Date(now - LOGIN_WINDOW_MS).toISOString());
+  const rows = (await db.prepare(
+    'SELECT created_at FROM LoginAttempts WHERE attempt_key = ? ORDER BY created_at ASC'
+  ).all(key)) as { created_at: string }[];
+  return rows.map((row) => Date.parse(String(row.created_at))).filter((time) => Number.isFinite(time) && now - time < LOGIN_WINDOW_MS);
 }
 
-export function isRateLimited(key: string, now = Date.now()): boolean {
-  return prune(key, now).length >= MAX_LOGIN_ATTEMPTS;
+export async function isRateLimited(key: string, now = Date.now()): Promise<boolean> {
+  return !(await checkLoginRateLimit(key, now)).allowed;
 }
 
-export function recordFailedLogin(key: string, now = Date.now()): number {
-  const timestamps = prune(key, now);
-  timestamps.push(now);
-  failedLogins.set(key, timestamps);
-  return timestamps.length;
+export async function recordFailedLogin(key: string, now = Date.now()): Promise<number> {
+  const db = await getDb();
+  await db.prepare('INSERT INTO LoginAttempts (attempt_key, created_at) VALUES (?, ?)').run(key, new Date(now).toISOString());
+  return (await attemptsFor(key, now)).length;
 }
 export const registerLoginFailure = recordFailedLogin;
 
-export function clearLoginFailures(key: string): void {
-  failedLogins.delete(key);
+export async function clearLoginFailures(key: string): Promise<void> {
+  const db = await getDb();
+  await db.prepare('DELETE FROM LoginAttempts WHERE attempt_key = ?').run(key);
 }
 export const resetLoginAttempts = clearLoginFailures;
 
@@ -408,8 +409,8 @@ export interface RateLimitResult {
   attempts: number;
 }
 
-export function checkLoginRateLimit(key: string, now = Date.now()): RateLimitResult {
-  const timestamps = prune(key, now);
+export async function checkLoginRateLimit(key: string, now = Date.now()): Promise<RateLimitResult> {
+  const timestamps = await attemptsFor(key, now);
   if (timestamps.length < MAX_LOGIN_ATTEMPTS) {
     return { allowed: true, retryAfter: 0, attempts: timestamps.length };
   }
@@ -436,13 +437,13 @@ export interface LoginResult {
 }
 
 export async function loginUser(email: string, password: string, key = 'local'): Promise<LoginResult> {
-  if (isRateLimited(key)) throw new AuthError(LOGIN_LIMIT_MESSAGE, 'rate_limited');
+  if (await isRateLimited(key)) throw new AuthError(LOGIN_LIMIT_MESSAGE, 'rate_limited');
   const user = await authenticateUser(email, password);
   if (!user) {
-    recordFailedLogin(key);
+    await recordFailedLogin(key);
     throw new AuthError('Невірний email або пароль', 'invalid_credentials');
   }
-  clearLoginFailures(key);
+  await clearLoginFailures(key);
   const session = await createSession(user.id);
   return { user, token: session.token, expiresAt: session.expiresAt };
 }

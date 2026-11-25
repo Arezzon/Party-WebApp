@@ -44,6 +44,13 @@
 - Коментар через UI реально створюється і з'являється після reload.
 - Cloudflared GET 200, POST 303.
 
+## Виправлення за аудитом 2026-11-25
+
+- Rate-limit логіну перенесено з isolate-памʼяті в таблицю D1 `LoginAttempts`: 10 хибних спроб → 10×400 + 2×429 навіть між різними Workers-ізолятами.
+- Обкладинки отримали версію `cover_version`; URL тепер `/events/:id/cover?v=<version>`, тому заміна файлу не повертає старі байти з edge-кешу.
+- `tests/self-audit.mjs` переписано як read-only HTTP-аудит проти `BASE_URL` без `better-sqlite3` і локального сервера на `:4399`.
+- Додано регресійні тести: `tests/rate-limit-d1.test.ts`, `tests/cover-version.test.ts`, `tests/self-audit-script.test.ts`.
+
 ## Оптимізація продуктивності
 
 - Сторінка події виконує незалежні D1-запити через `Promise.all` замість послідовного ланцюга.

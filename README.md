@@ -93,7 +93,7 @@ bash scripts/perf-check.sh  # заміри часу відповіді прод�
 - `src/pages/api/` — REST-екшени (події, RSVP, коментарі, профіль, скарги)
 - `src/pages/events/`, `src/pages/invite/` — сторінки подій і запрошень
 - `src/components/` — React-острівці (форми) і Astro-компоненти
-- `tests/` — автотести безпеки, concurrency, валідації, приватності, акаунта, модерації; `self-audit.mjs` — живий HTTP-аудит
+- `tests/` — автотести безпеки, concurrency, валідації, приватності, акаунта, модерації; `self-audit.mjs` — живий HTTP-аудит проти `BASE_URL` без зміни даних
 
 ## Безпека й дані
 
