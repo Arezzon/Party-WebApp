@@ -1,8 +1,9 @@
 <!--
 Sync Impact Report:
-Version change: (new) → 1.0.0
-Modified principles: none (initial ratification)
-Added sections: 5 Core Principles; Security & Privacy Requirements; Development Workflow & Quality Gates; Governance
+Version change: 1.0.0 → 1.1.0
+Modified principles: added VI. Operational Excellence; updated stack/cover requirements
+Added sections: Deployment, CI/CD and performance quality gates
+Removed sections: none
 Removed sections: none
 Follow-up TODOs: none
 -->
@@ -41,15 +42,21 @@ Follow-up TODOs: none
 - Правила сервісу + механізм скарг; автор може видаляти коментарі під своєю подією.
 - Профіль: зміна імені, видалення акаунта (сесії, події, RSVP видаляються; коментарі знеособлюються).
 - Приватні події: 404 на сторінку/обкладинку/запис/коментар для всіх без інвайту.
-- Обкладинки: перекодування у WebP, `nosniff`, збереження в БД, відхилення HTML/SVG зі скриптом/EXE.
+- Обкладинки: перевірка magic bytes, збереження оригінальних байтів у D1 (≤1.5 МБ), `nosniff`, відхилення HTML/SVG зі скриптом/EXE; публічні — ETag + edge cache, приватні — `no-store`.
 
 ## Development Workflow & Quality Gates
-- Стек: Astro 7 SSR + React 19 + Tailwind 4 + shadcn/ui + React Bits (registry `@reactbits`).
+- Стек: Astro 7 SSR на Cloudflare Workers Free + D1 + React 19 + Tailwind 4 + shadcn/ui + React Bits (registry `@reactbits`).
 - Node: ≥22.23.4.
-- Команди: `npm run dev`, `npm run build`, `npm test`, `npx astro check`.
-- Перед здачею: `npm test` зелений, `astro check` 0 error, `astro build` успішний, self-audit як другий користувач.
+- Команди: `npm run dev`, `npm run build`, `npm test`, `npx astro check`, `bash scripts/perf-check.sh`.
+- Перед здачею: `npm test` зелений, `astro check` 0 error, `astro build` успішний, perf-check `PASS`, self-audit як другий користувач.
+- Деплой тільки через GitHub Actions із `main`; секрети зберігаються в GitHub Secrets.
+
+### VI. Operational Excellence (NON-NEGOTIABLE)
+Кожен PR проходить автоматичні перевірки тестів, типів і білду. Зміни потрапляють на прод тільки після зеленого CI та merge у `main`. Продовий деплой застосовує міграції схеми. Залежності оновлюються автоматично. Публічні обкладинки мають кеш, приватні — ні.
+
+**Rationale**: Ручний деплой і відсутність перевірок були причиною простоїв і регресій.
 
 ## Governance
 Constitution має пріоритет над PLAN.md і TASKS.md. Зміни principle вимагають MINOR/MAJOR bump і оновлення Sync Impact Report. Усі PR перевіряються на відповідність принципам. Винятки фіксуються в plan.md з обґрунтуванням.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-24 | **Last Amended**: 2026-11-24
+**Version**: 1.1.0 | **Ratified**: 2026-11-24 | **Last Amended**: 2026-11-25

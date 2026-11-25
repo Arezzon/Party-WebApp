@@ -4,7 +4,7 @@
 **Date**: 2026-11-24
 
 ## R1. SSR адаптер Astro
-- **Decision**: `@astrojs/node` у режимі `standalone`.
+- **Decision**: `@astrojs/cloudflare` на Cloudflare Workers Free; `@astrojs/node` лишився в історії до міграції.
 - **Rationale**: Потрібні серверні маршрути, сесії, БД і захист Origin. Static build не підходить. Node standalone дає один `dist/server/entry.mjs`.
 - **Alternatives**: `@astrojs/vercel` (потребує акаунт), static (немає auth) — відхилено.
 
@@ -14,12 +14,12 @@
 - **Alternatives**: Better Auth (тяжкий, додає міграції), OAuth (за ТЗ не потрібен) — відхилено.
 
 ## R3. База даних
-- **Decision**: `better-sqlite3`, `journal_mode=WAL`, `busy_timeout=5000`, синхронні запити в Astro SSR (Node). Унікальні індекси: `rsvp(event_id,user_id)`, `idempotency(key,user_id)`, `events(invite_token)`.
+- **Decision**: Cloudflare D1 з async-фасадом; `better-sqlite3` лише для Node-тестів. Унікальні індекси: `rsvp(event_id,user_id)`, `idempotency(key,user_id)`, `events(invite_token)`.
 - **Rationale**: Синхронний API виключає гонки в межах процесу; транзакції дають «рівно 1 запис на останнє місце». Немає окремого сервера БД.
 - **Alternatives**: `node:sqlite` (експериментальний), Postgres (потребує сервіс) — відхилено.
 
 ## R4. Обкладинки
-- **Decision**: Preread перші 512 байтів → перевірка magic bytes (PNG/JPEG/WebP), розмір ≤10MB; `sharp` перекодування у WebP (quality 80), збереження BLOB у SQLite; віддача з `Content-Type: image/webp`, `X-Content-Type-Options: nosniff`. Ім'я файлу ігнорується повністю.
+- **Decision**: Перевірка magic bytes (PNG/JPEG/WebP), розмір ≤1.5 MB; оригінальні байти зберігаються в D1; віддача з безпечним MIME, `X-Content-Type-Options: nosniff`, `ETag` і публічним edge-кешем. Ім'я файлу ігнорується повністю.
 - **Rationale**: Закриває знахідки з HTML/EXE/SVG/path traversal; еталон робив так само.
 - **Alternatives**: збереження на диск (ризик path traversal), raw bytes (MIME spoofing) — відхилено.
 
