@@ -253,19 +253,18 @@ test('довга назва події без пробілів не розтяг
   assert.match(detail, /min-w-0 order-2 lg:order-1/, 'grid-дитина має min-w-0, інакше min-width:auto розтягує трек');
 });
 
-test('гостьова картка коментарів: сітка, ієрархія й CTA', async () => {
+test('гостьова картка коментарів: центрований CTA, іконка згори й ієрархія', async () => {
   const detail = await readFile(new URL('../src/components/site/EventDetail.astro', import.meta.url), 'utf8');
   const css = await readFile(new URL('../src/styles/global.css', import.meta.url), 'utf8');
   assert.match(detail, /class="cta-card p-6 sm:p-7"/, 'картка має окремий CTA-стиль');
-  assert.ok(detail.includes('grid h-full grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_1fr]'), 'вміст картки займає всю висоту');
-  assert.ok(detail.includes('row-start-2 self-end justify-self-start'), 'кнопка притиснута до низу картки на мобільному');
-  assert.match(detail, /grid-cols-\[auto_minmax\(0,1fr\)\]/, 'на мобільному: іконка + контент');
-  assert.match(detail, /lg:grid-cols-\[auto_minmax\(0,1fr\)_auto\]/, 'на великих: іконка + контент + дія');
+  assert.ok(detail.includes('grid h-full grid-rows-[auto_auto_auto] content-center justify-items-center gap-y-5 text-center'), 'вміст відцентрований по обох осях');
+  const iconAt = detail.indexOf('cta-card__icon');
+  const headingAt = detail.indexOf('<h3 class="mt-2 text-base font-medium leading-snug">');
+  const buttonAt = detail.indexOf('class="pill pill--primary group"');
+  assert.ok(iconAt > -1 && headingAt > iconAt && buttonAt > headingAt, 'порядок: іконка → текст → кнопка');
   assert.match(detail, /<h2 class="eyebrow">Учасники/, 'секція учасників має заголовок другого рівня');
   assert.match(detail, /<h2 class="eyebrow">Коментарі/, 'секція коментарів має заголовок другого рівня');
   assert.match(detail, /<h3 class="mt-2 text-base font-medium leading-snug">/, 'назва в картці — заголовок третього рівня');
-  assert.match(detail, /cta-card__icon row-start-1 col-start-1/, 'іконка в першій колонці');
-  assert.match(detail, /pill pill--primary group col-span-2 row-start-2/, 'кнопка під контентом на мобільному');
   assert.match(css, /\.cta-card \{[^}]*radial-gradient/, 'фон картки має акцентний градієнт');
 });
 
