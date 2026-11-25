@@ -1,10 +1,10 @@
 /**
  * Authentication: scrypt salt:hash passwords, random 32-byte session tokens
- * (SHA-256 hashed in SQLite), HttpOnly + SameSite=Lax cookies and a small
- * in-memory login rate limiter (10 failures -> 429).
+ * (SHA-256 hashed in SQLite), HttpOnly + SameSite=Lax cookies and a durable
+ * D1 login rate limiter (10 failures -> 429). KDF path is runtime-aware.
  */
 // @ts-ignore -- node builtins are provided by the Node runtime
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, scrypt, scryptSync, timingSafeEqual } from 'node:crypto';
 import { getDb, newId, nowIso, type UserRow } from './db';
 import {
   LOGIN_WINDOW_MS,
@@ -92,6 +92,54 @@ function derive(password: string, salt: Uint8Array, n = SCRYPT_N, r = SCRYPT_R, 
   return new Uint8Array(result);
 }
 
+/**
+ * Workers runs `scryptSync` as native code outside the metered JS CPU budget,
+ * so async `node:crypto.scrypt` (a JS polyfill there) would hang under load.
+ * Node/dev uses real async scrypt to keep the event loop responsive.
+ */
+export const IS_WORKERS_RUNTIME = typeof (globalThis as any).WebSocketPair === 'function';
+const IS_DEV_NODE = !IS_WORKERS_RUNTIME && typeof (globalThis as any).process?.release?.name === 'string';
+
+export const SCRYPT_CONCURRENCY = 4;
+let activeScrypt = 0;
+const scryptWaiters: Array<() => void> = [];
+
+function acquireScryptSlot(): Promise<void> {
+  if (activeScrypt < SCRYPT_CONCURRENCY) {
+    activeScrypt += 1;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => scryptWaiters.push(resolve));
+}
+
+function releaseScryptSlot(): void {
+  const next = scryptWaiters.shift();
+  if (next) next();
+  else activeScrypt -= 1;
+}
+
+async function deriveAsync(
+  password: string,
+  salt: Uint8Array,
+  n = SCRYPT_N,
+  r = SCRYPT_R,
+  p = SCRYPT_P
+): Promise<Uint8Array> {
+  await acquireScryptSlot();
+  try {
+    if (!IS_DEV_NODE) return derive(password, salt, n, r, p);
+
+    return await new Promise<Uint8Array>((resolve, reject) => {
+      scrypt(password, salt as any, SCRYPT_KEYLEN, { N: n, r, p, maxmem: 128 * 1024 * 1024 }, (error, key) => {
+        if (error || !key) reject(error ?? new Error('scrypt failed'));
+        else resolve(new Uint8Array(key));
+      });
+    });
+  } finally {
+    releaseScryptSlot();
+  }
+}
+
 function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;
   try {
@@ -101,36 +149,71 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
   }
 }
 
+interface StoredPassword {
+  salt: Uint8Array;
+  expected: Uint8Array;
+  n: number;
+  r: number;
+  p: number;
+}
+
+function parseStoredPassword(stored: string): StoredPassword | null {
+  if (typeof stored !== 'string' || stored.length === 0) return null;
+  try {
+    if (stored.startsWith('scrypt$')) {
+      const parts = stored.split('$');
+      if (parts.length !== 6) return null;
+      const n = Number(parts[1]);
+      const r = Number(parts[2]);
+      const p = Number(parts[3]);
+      if (![n, r, p].every((value) => Number.isInteger(value) && value > 0)) return null;
+      const salt = fromHex(parts[4]);
+      const expected = fromHex(parts[5]);
+      if (salt.length === 0 || expected.length === 0) return null;
+      return { salt, expected, n, r, p };
+    }
+    if (stored.includes(':')) {
+      const [saltHex, hashHex] = stored.split(':');
+      const salt = fromHex(saltHex);
+      const expected = fromHex(hashHex);
+      if (salt.length === 0 || expected.length === 0) return null;
+      return { salt, expected, n: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 /** `scrypt$16384$8$1$<salt-hex>$<hash-hex>` — never returns the raw password. */
 export function hashPassword(password: string): string {
   const salt = new Uint8Array(randomBytes(16));
   return `scrypt$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${toHex(salt)}$${toHex(derive(password, salt))}`;
 }
 
+/** Async registration hashing; keeps the event loop free for other requests. */
+export async function hashPasswordAsync(password: string): Promise<string> {
+  const salt = new Uint8Array(randomBytes(16));
+  return `scrypt$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${toHex(salt)}$${toHex(await deriveAsync(password, salt))}`;
+}
+
 /** Constant-time verification; accepts legacy `salt:hash` records too. */
 export function verifyPassword(password: string, stored: string): boolean {
-  if (typeof stored !== 'string' || stored.length === 0) return false;
+  const parsed = parseStoredPassword(stored);
+  if (!parsed) return false;
   try {
-    if (stored.startsWith('scrypt$')) {
-      const parts = stored.split('$');
-      if (parts.length !== 6) return false;
-      const n = Number(parts[1]);
-      const r = Number(parts[2]);
-      const p = Number(parts[3]);
-      if (![n, r, p].every((value) => Number.isInteger(value) && value > 0)) return false;
-      const salt = fromHex(parts[4]);
-      const expected = fromHex(parts[5]);
-      if (salt.length === 0 || expected.length === 0) return false;
-      return equalBytes(derive(password, salt, n, r, p), expected);
-    }
-    if (stored.includes(':')) {
-      const [saltHex, hashHex] = stored.split(':');
-      const salt = fromHex(saltHex);
-      const expected = fromHex(hashHex);
-      if (salt.length === 0 || expected.length === 0) return false;
-      return equalBytes(derive(password, salt), expected);
-    }
+    return equalBytes(derive(password, parsed.salt, parsed.n, parsed.r, parsed.p), parsed.expected);
+  } catch {
     return false;
+  }
+}
+
+/** Async login verification; never blocks the event loop while hashing. */
+export async function verifyPasswordAsync(password: string, stored: string): Promise<boolean> {
+  const parsed = parseStoredPassword(stored);
+  if (!parsed) return false;
+  try {
+    return equalBytes(await deriveAsync(password, parsed.salt, parsed.n, parsed.r, parsed.p), parsed.expected);
   } catch {
     return false;
   }
@@ -204,7 +287,7 @@ export async function registerUser(input: RegisterInput): Promise<PublicUser> {
     id: newId(),
     email,
     name,
-    password_hash: hashPassword(password),
+    password_hash: await hashPasswordAsync(password),
     created_at: nowIso()
   };
   const db = await getDb();
@@ -219,7 +302,7 @@ export const createUser = registerUser;
 export async function authenticateUser(email: string, password: string): Promise<PublicUser | null> {
   const row = await getUserRecordByEmail(email);
   if (!row) return null;
-  if (!verifyPassword(String(password ?? ''), row.password_hash)) return null;
+  if (!await verifyPasswordAsync(String(password ?? ''), row.password_hash)) return null;
   return toPublicUser(row);
 }
 
@@ -379,10 +462,9 @@ export async function requireUserOrRedirect(context: any, path = '/login'): Prom
 /** Shared, durable login-attempt counter. Isolate-local Maps do not work on Workers. */
 async function attemptsFor(key: string, now: number): Promise<number[]> {
   const db = await getDb();
-  await db.prepare('DELETE FROM LoginAttempts WHERE created_at <= ?').run(new Date(now - LOGIN_WINDOW_MS).toISOString());
   const rows = (await db.prepare(
-    'SELECT created_at FROM LoginAttempts WHERE attempt_key = ? ORDER BY created_at ASC'
-  ).all(key)) as { created_at: string }[];
+    'SELECT created_at FROM LoginAttempts WHERE attempt_key = ? AND created_at > ? ORDER BY created_at ASC'
+  ).all(key, new Date(now - LOGIN_WINDOW_MS).toISOString())) as { created_at: string }[];
   return rows.map((row) => Date.parse(String(row.created_at))).filter((time) => Number.isFinite(time) && now - time < LOGIN_WINDOW_MS);
 }
 
@@ -392,6 +474,8 @@ export async function isRateLimited(key: string, now = Date.now()): Promise<bool
 
 export async function recordFailedLogin(key: string, now = Date.now()): Promise<number> {
   const db = await getDb();
+  await db.prepare('DELETE FROM LoginAttempts WHERE attempt_key = ? AND created_at <= ?')
+    .run(key, new Date(now - LOGIN_WINDOW_MS).toISOString());
   await db.prepare('INSERT INTO LoginAttempts (attempt_key, created_at) VALUES (?, ?)').run(key, new Date(now).toISOString());
   return (await attemptsFor(key, now)).length;
 }

@@ -1,7 +1,7 @@
 {
   "name": "tusivka",
   "main": "@astrojs/cloudflare/entrypoints/server",
-  "compatibility_date": "2026-11-25",
+  "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
     "directory": "./dist",
