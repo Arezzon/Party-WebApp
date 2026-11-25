@@ -82,6 +82,15 @@ test('створення події: UUID, 32 байти інвайту, обк�
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('content-type'), event.coverMime, 'Content-Type має відповідати збереженому MIME');
   assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.match(String(response.headers.get('cache-control')), /public/);
+
+  const etag = response.headers.get('etag');
+  assert.ok(etag, 'обкладинка має ETag для кешування');
+  const revalidated = await events.coverResponse(
+    event,
+    new Request('https://example.test/cover', { headers: { 'If-None-Match': etag! } })
+  );
+  assert.equal(revalidated.status, 304, 'If-None-Match має повертати 304 без тіла');
 });
 
 test('невалідні places (0, -1, 1.5, 7abc, 1e20) відхиляються зі статусом 400', async () => {

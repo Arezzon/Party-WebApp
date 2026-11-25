@@ -30,6 +30,21 @@ npx wrangler deploy
 100 тис. write/день, 5 ГБ. D1 обмежує рядок/BLOB 2 МБ, тому обкладинки — до
 1.5 МБ і зберігаються оригінальними байтами (без `sharp`/R2).
 
+### Швидкість
+
+Незалежні D1-читання на сторінці події йдуть паралельно; схема бази зафіксована
+в коді й не інтроспегується через `PRAGMA` на кожен запит. Обкладинки читаються
+окремим мінімальним запитом, мають ETag і кешуються на edge тільки для публічних
+подій (приватні — `private, no-store`).
+
+```bash
+BASE=https://tusivka.byndevav.workers.dev bash scripts/perf-check.sh
+```
+
+Пороги: головна < 400 мс, подія < 800 мс, обкладинка < 500 мс. Скрипт додає
+cache-buster, бо інакше Cloudflare віддає стару закешовану відповідь і ховає
+реальну зміну часу.
+
 ## Змінні середовища
 
 | Змінна | За замовчуванням | Призначення |
@@ -39,7 +54,7 @@ npx wrangler deploy
 | `SESSION_COOKIE_NAME` | `session` | Ім'я cookie |
 | `SESSION_TTL_DAYS` | `30` | Термін життя сесії |
 | `SECURE_COOKIES` | `false` | `true` тільки на HTTPS |
-| `MAX_UPLOAD_BYTES` | `10485760` | Ліміт обкладинки (10 MiB) |
+| `MAX_UPLOAD_BYTES` | `10485760` | Ліміт multipart; Worker додатково обмежує обкладинку 1.5 МБ |
 | `MAX_LOGIN_ATTEMPTS` / `LOGIN_WINDOW_MS` | `10` / `60000` | Rate-limit логіну |
 | `MAX_EVENT_YEARS` | `2` | Максимальний горизонт дати події |
 | `MODERATOR_EMAILS` | `arsen@tusivka.local` | Email-и модераторів через кому; регістр не враховується |

@@ -51,28 +51,26 @@ export interface EventPatch {
   visibility?: EventVisibility | string;
 }
 
-/* ---------- small schema-compatibility helpers -------------------------- */
+/* ---------- fixed schema: no per-request PRAGMA storm ------------------ */
+
+//The migration owns these names; introspecting sqlite_master/PRAGMA on every
+//call cost ~21 D1 round trips per helper and dominated event-page latency.
+const EVENTS = 'Events';
+const USERS = 'Users';
+const RSVPS = 'RSVP';
+const EC = {
+  id: 'id', author_id: 'author_id', title: 'title', description: 'description',
+  starts_at: 'starts_at', places: 'places', cover_blob: 'cover_blob',
+  cover_mime: 'cover_mime', visibility: 'visibility', invite_token: 'invite_token',
+  created_at: 'created_at'
+} as const;
+const UC = { id: 'id', name: 'name', email: 'email' } as const;
+const RC = { event_id: 'event_id', user_id: 'user_id' } as const;
 
 type DbLike = Awaited<ReturnType<typeof getDb>>;
 
 function quote(name: string): string {
-  return `"${name.replaceAll('"', '""')}"`;
-}
-
-async function tableOf(db: DbLike, base: string): Promise<string> {
-  const wanted = base.toLowerCase().replace(/_/g, '');
-  const rows = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all()) as { name: string }[];
-  const found = rows.find((r) => r.name.toLowerCase().replace(/_/g, '') === wanted)
-    ?? rows.find((r) => r.name.toLowerCase().replace(/_/g, '') === `${wanted}s`);
-  return found?.name ?? base;
-}
-
-async function columnOf(db: DbLike, table: string, logical: string): Promise<string> {
-  const normalized = logical.toLowerCase().replace(/_/g, '');
-  const info = (await db.prepare(`PRAGMA table_info(${quote(table)})`).all()) as { name: string }[];
-  const found = info.find((c) => c.name === logical)
-    ?? info.find((c) => c.name.toLowerCase().replace(/_/g, '') === normalized);
-  return found?.name ?? logical;
+  return `\"${name.replaceAll('\"', '\"\"')}\"`;
 }
 
 interface Schema {
@@ -86,19 +84,7 @@ interface Schema {
 }
 
 async function schema(): Promise<Schema> {
-  const db = await getDb();
-  const events = await tableOf(db, 'Event');
-  const users = await tableOf(db, 'User');
-  const rsvps = await tableOf(db, 'RSVP');
-  const ec: Record<string, string> = {};
-  for (const key of ['id', 'author_id', 'title', 'description', 'starts_at', 'places', 'cover_blob', 'cover_mime', 'visibility', 'invite_token', 'created_at']) {
-    ec[key] = await columnOf(db, events, key);
-  }
-  const uc: Record<string, string> = {};
-  for (const key of ['id', 'name', 'email']) uc[key] = await columnOf(db, users, key);
-  const rc: Record<string, string> = {};
-  for (const key of ['event_id', 'user_id']) rc[key] = await columnOf(db, rsvps, key);
-  return { db, events, users, rsvps, ec, uc, rc };
+  return { db: await getDb(), events: EVENTS, users: USERS, rsvps: RSVPS, ec: EC, uc: UC, rc: RC };
 }
 
 /* ---------- validation & conversion ------------------------------------ */
@@ -232,6 +218,30 @@ export async function getEvent(id: string): Promise<EventRecord | null> {
   const s = await schema();
   const row = (await s.db.prepare(`SELECT * FROM ${quote(s.events)} WHERE ${quote(s.ec.id)} = ?`).get(id)) as Record<string, unknown> | undefined;
   return mapEvent(row);
+}
+
+export interface CoverRecord {
+  blob: Uint8Array | null;
+  mime: string;
+  visibility: EventVisibility;
+  inviteToken: string;
+  createdAt: string;
+}
+
+/** One small query for the image route — no full row, no blob in page HTML. */
+export async function getCover(id: string): Promise<CoverRecord | null> {
+  const s = await schema();
+  const row = (await s.db.prepare(
+    `SELECT ${quote(s.ec.cover_blob)}, ${quote(s.ec.cover_mime)}, ${quote(s.ec.visibility)}, ${quote(s.ec.invite_token)}, ${quote(s.ec.created_at)} FROM ${quote(s.events)} WHERE ${quote(s.ec.id)} = ?`
+  ).get(id)) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return {
+    blob: (row[s.ec.cover_blob] as Uint8Array | null | undefined) ?? null,
+    mime: String(row[s.ec.cover_mime] ?? 'image/png'),
+    visibility: (row[s.ec.visibility] === 'private' ? 'private' : 'public') as EventVisibility,
+    inviteToken: String(row[s.ec.invite_token] ?? ''),
+    createdAt: String(row[s.ec.created_at] ?? '')
+  };
 }
 
 export async function listPublicEvents(search = ''): Promise<EventRecord[]> {
@@ -394,19 +404,35 @@ export async function deleteEvent(id: string, userId: string): Promise<void> {
   await s.db.prepare(`DELETE FROM ${quote(s.events)} WHERE ${quote(s.ec.id)} = ?`).run(id);
 }
 
-export function coverResponse(event: EventRecord): Response {
+/** Stable content hash so a replaced cover gets a new cache key. */
+function coverETag(bytes: Uint8Array, salt: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < bytes.length; i++) {
+    hash ^= bytes[i];
+    hash = Math.imul(hash, 16777619);
+  }
+  return `"${salt}-${(hash >>> 0).toString(16)}-${bytes.length}"`;
+}
+
+export function coverResponse(event: EventRecord, request?: Request): Response {
   if (!event.coverBlob) return new Response(null, { status: 404 });
   const bytes = event.coverBlob instanceof Uint8Array ? event.coverBlob : new Uint8Array(event.coverBlob);
+  const etag = coverETag(bytes, String(event.createdAt ?? ''));
+  const isPrivate = event.visibility === 'private';
+  const headers: Record<string, string> = {
+    'Content-Type': event.coverMime || 'image/png',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    'ETag': etag,
+    'Cache-Control': isPrivate
+      ? 'private, no-store'
+      : 'public, max-age=86400, stale-while-revalidate=604800'
+  };
+  if (request?.headers.get('if-none-match') === etag) {
+    return new Response(null, { status: 304, headers });
+  }
   const body = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-  return new Response(body, {
-    status: 200,
-    headers: {
-      'Content-Type': event.coverMime || 'image/png',
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'no-referrer',
-      'Cache-Control': 'public, max-age=3600'
-    }
-  });
+  return new Response(body, { status: 200, headers });
 }
 
 export function toKyivInput(iso: string): string {
