@@ -16,14 +16,14 @@ export default function HeroText({ title, subtitle, eyebrow }: Props) {
       {eyebrow ? (
         <ShinyText
           text={eyebrow}
-          color="#8a8f98"
-          shineColor="#c9caff"
+          color="#00e5ff"
+          shineColor="#ff2e88"
           speed={2.6}
           angle={-18}
           shineWidth={2.2}
           softness={0.6}
           bands={2}
-          glow={0.35}
+          glow={0.5}
           trigger="loop"
           easing="smooth"
           className="text-[11px] uppercase tracking-[0.18em]"
@@ -40,21 +40,21 @@ export default function HeroText({ title, subtitle, eyebrow }: Props) {
         staggerFrom="center"
         textAlign="left"
         trigger="load"
-        color="#f7f8f8"
-        accentColor="#8b8cff"
+        color="#fff5fb"
+        accentColor="#ff2e88"
         hoverEffect="lift"
         className="hero-title text-4xl font-medium tracking-tight sm:text-5xl"
       />
       <p className="text-sm text-muted-foreground">
         <DecryptedText
           text={subtitle}
-          speed={28}
-          maxIterations={10}
+          speed={16}
+          maxIterations={64}
           sequential
           revealDirection="start"
           animateOn="view"
           effect="scramble"
-          scrambleColor="#7170ff"
+          scrambleColor="#00e5ff"
           useOriginalCharsOnly={false}
           characters="АБВГДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ0123456789±§@#$%"
           parentClassName="inline"

@@ -83,8 +83,8 @@ export default function CommentForm({ eventId, className = '' }: CommentFormProp
         type="submit"
         size="sm"
         disabled={busy}
-        tint="#7170ff"
-        textColor="#ffffff"
+        tint="#ff2e88"
+        textColor="#0a0418"
         className="mt-3"
       >
         {busy ? 'Надсилаємо…' : 'Коментувати'}

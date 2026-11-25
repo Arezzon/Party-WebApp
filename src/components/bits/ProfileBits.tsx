@@ -30,7 +30,7 @@ export default function ProfileBits({ name, created, attending }: Props) {
 
   return (
     <div className="flex flex-col gap-8">
-      <BorderGlow glowColor="#7170ff" backgroundColor="#0b0d12" borderRadius={18} glowIntensity={0.45} animated>
+      <BorderGlow glowColor="#ff2e88" backgroundColor="#170b2e" borderRadius={18} glowIntensity={0.45} animated>
         <div style={{ padding: '8px 10px' }}>
           <ProfileCard
             name={name}
@@ -60,7 +60,7 @@ export default function ProfileBits({ name, created, attending }: Props) {
             animateOnce
             frame
             theme="dark"
-            accentColor="#7170ff"
+            accentColor="#ff2e88"
             width="100%"
             maxHeight={360}
           />
@@ -81,7 +81,7 @@ export default function ProfileBits({ name, created, attending }: Props) {
             animateOnce
             frame
             theme="dark"
-            accentColor="#7170ff"
+            accentColor="#ff2e88"
             width="100%"
             maxHeight={360}
           />

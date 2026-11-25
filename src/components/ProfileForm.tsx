@@ -52,10 +52,10 @@ export default function ProfileForm({ name }: Props) {
             maxLength={80}
             required
             onChange={(event) => setValue(event.target.value)}
-            style={{ background: '#0b0d12', color: '#e6e8ee', border: '1px solid #343b49', borderRadius: 8, padding: '10px 12px' }}
+            style={{ background: '#170b2e', color: '#e6e8ee', border: '1px solid #343b49', borderRadius: 8, padding: '10px 12px' }}
           />
         </label>
-        <SpecularButton type="submit" size="sm" disabled={saving} tint="#7170ff" textColor="#ffffff">
+        <SpecularButton type="submit" size="sm" disabled={saving} tint="#ff2e88" textColor="#0a0418">
           Зберегти
         </SpecularButton>
       </form>
@@ -67,7 +67,7 @@ export default function ProfileForm({ name }: Props) {
         onClick={removeAccount}
         disabled={saving}
         tint="#ff6b6b"
-        textColor="#ffffff"
+        textColor="#0a0418"
       >
         Видалити акаунт
       </SpecularButton>

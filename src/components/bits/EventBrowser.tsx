@@ -31,7 +31,7 @@ export default function EventBrowser({ query, events }: Props) {
           value={event.free}
           fontSize={13}
           fontWeight={600}
-          textColor="#c7ccd8"
+          textColor="#00e5ff"
           duration={0.8}
           intro
         />
@@ -55,6 +55,13 @@ export default function EventBrowser({ query, events }: Props) {
         height={64}
         bend={16}
         theme="dark"
+        backgroundColor="#170b2e"
+        textColor="#fff5fb"
+        placeholderColor="#b39fd4"
+        borderColor="rgba(0,229,255,0.35)"
+        buttonColor="#ff2e88"
+        buttonTextColor="#0a0418"
+        shadowColor="#ff2e88"
       />
 
       {events.length === 0 ? null : (
@@ -74,7 +81,7 @@ export default function EventBrowser({ query, events }: Props) {
           displayScrollbar={false}
           frame
           theme="dark"
-          accentColor="#7170ff"
+          accentColor="#ff2e88"
           radius={14}
           gap={12}
           width="100%"

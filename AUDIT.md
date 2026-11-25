@@ -24,7 +24,14 @@
 - **Лічильники місць** — `Counter`.
 - **Кнопки у формах** — `SpecularButton`.
 - **Профіль** — `ProfileCard`.
-- **Фон** — `Aurora`, `DotGrid`, `Noise`, `ClickSpark`, `HoloMosaic`, `NeonGlyphs`.
+- **Фон** — `Grainient` (новий shader-фон), `Lightning`, `Noise`, `ClickSpark`, `HoloMosaic`, `NeonGlyphs`.
+
+## Vice City та виправлення
+
+- Замінено Linear-токени на нічну палітру Vice City: глибокий фіолет `#0a0418`, неоновий рожевий `#ff2e88`, океан-ціан `#00e5ff`, бузок `#b967ff`.
+- Старий фон `Aurora + DotGrid` замінено на щойно додані компоненти React Bits `Grainient` (WebGL-градієнт із зерном) і `Lightning`; поверх — CSS-горизонт із перспективною сіткою.
+- Виправлено зламаний субтитр: `DecryptedText` мав `maxIterations={10}` і обривався на «Час указано за К…» — тепер 64 ітерації, текст розшифровується повністю.
+- Усі кольори навігації, кнопок, карток, лічильників і футера приведено до Vice City.
 
 Для передачі серіалізованих даних у React-острівці додано тонкі TSX-обгортки в `src/components/bits/`: `SiteNav`, `HeroText`, `PromoBanner`, `EventBrowser`, `FooterBits`, `ProfileBits`, `EventDetailBits`.
 
@@ -40,4 +47,4 @@
 - `npm run build` — success
 - Браузер: 9 острівців на головній, 0 негідрованих; пошук через `CurvedInput` змінює URL на `/?q=...`; події та профіль рендеряться без горизонтального переповнення.
 - Коміт: `8266eeb` (текстові ефекти), далі — ця перебудова.
-- Публічний прев'ю: https://fair-pants-win.loca.lt
+- Публічний прев'ю: https://fuzzy-clubs-mix.loca.lt

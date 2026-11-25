@@ -100,7 +100,7 @@ export default function AuthForm({ mode = 'login', error = '', notice = '', next
           </label>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <SpecularButton type="submit" size="lg" tint="#7170ff" textColor="#ffffff">
+            <SpecularButton type="submit" size="lg" tint="#ff2e88" textColor="#0a0418">
               {isRegister ? 'Зареєструватися' : 'Увійти'}
             </SpecularButton>
             {isRegister && (

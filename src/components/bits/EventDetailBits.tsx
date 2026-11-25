@@ -29,7 +29,7 @@ export default function EventDetailBits(props: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <BorderGlow glowColor="#7170ff" backgroundColor="#0b0d12" borderRadius={18} glowIntensity={0.4}>
+      <BorderGlow glowColor="#ff2e88" backgroundColor="#170b2e" borderRadius={18} glowIntensity={0.4}>
         <SpotlightCard
           spotlightColor="rgba(113,112,255,0.35)"
           intensity={0.8}
@@ -52,7 +52,7 @@ export default function EventDetailBits(props: Props) {
                 duration={0.9}
                 trigger="load"
                 textAlign="left"
-                color="#f7f8f8"
+                color="#fff5fb"
                 className="text-3xl font-semibold tracking-tight"
               />
               {props.isPrivate ? (
@@ -63,7 +63,7 @@ export default function EventDetailBits(props: Props) {
             <ShinyText
               text={props.date}
               color="#9aa2b1"
-              shineColor="#c9caff"
+              shineColor="#00e5ff"
               speed={2.2}
               trigger="loop"
               className="text-sm"
@@ -71,7 +71,7 @@ export default function EventDetailBits(props: Props) {
 
             <p className="flex items-center gap-2 text-sm font-medium">
               Вільних місць:
-              <Counter value={props.left} fontSize={20} fontWeight={600} textColor="#f7f8f8" intro />
+              <Counter value={props.left} fontSize={20} fontWeight={600} textColor="#fff5fb" intro />
               з {props.places}
             </p>
 
@@ -82,7 +82,7 @@ export default function EventDetailBits(props: Props) {
             <div className="flex flex-wrap items-center gap-3 pt-2">
               {props.user && !props.isAuthor && props.going ? (
                 <form method="post" action={`/api/events/${props.id}/unrsvp`}>
-                  <SpecularButton type="submit" size="sm" tint="#ff6b6b" textColor="#ffffff">
+                  <SpecularButton type="submit" size="sm" tint="#ff6b6b" textColor="#0a0418">
                     Скасувати участь
                   </SpecularButton>
                 </form>
@@ -90,7 +90,7 @@ export default function EventDetailBits(props: Props) {
               {props.user && !props.isAuthor && !props.going ? (
                 <form method="post" action={`/api/events/${props.id}/rsvp`}>
                   <input type="hidden" name="idempotencyKey" value={props.idempotencyKey} />
-                  <SpecularButton type="submit" size="sm" disabled={props.left === 0} tint="#7170ff" textColor="#ffffff">
+                  <SpecularButton type="submit" size="sm" disabled={props.left === 0} tint="#ff2e88" textColor="#0a0418">
                     Іду
                   </SpecularButton>
                 </form>

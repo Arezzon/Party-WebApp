@@ -21,9 +21,9 @@ export default function SiteNav({ activeHref, links }: Props) {
         fontFamily="system-ui, sans-serif"
         fontWeight={700}
         scale={0.95}
-        baseColor="#e6e8ee"
-        colors={['#5e6ad2', '#7170ff', '#9b8cff']}
-        heat={0.4}
+        baseColor="#fff5fb"
+        colors={['#ff2e88', '#00e5ff', '#b967ff']}
+        heat={0.65}
         radius={1.1}
         softness={0.2}
         swell={0.05}
@@ -49,9 +49,9 @@ export default function SiteNav({ activeHref, links }: Props) {
       itemStyle="pill"
       hoverEffect="glide"
       indicator="dot"
-      highlightColor="#7170ff"
-      highlightTextColor="#ffffff"
-      textColor="#c7ccd8"
+      highlightColor="#ff2e88"
+      highlightTextColor="#0a0418"
+      textColor="#f3d9ff"
       collapse="auto"
       intro
       ariaLabel="Головна навігація"

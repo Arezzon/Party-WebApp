@@ -12,7 +12,7 @@ export default function GlitchLabel({ text }: Props) {
       speed={0.9}
       enableShadows
       offset={2}
-      shadowColors={['#7170ff', '#b06bff']}
+      shadowColors={['#ff2e88', '#00e5ff']}
       mode="rgb"
       intensity={0.45}
       trigger="hover"

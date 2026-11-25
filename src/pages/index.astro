@@ -60,7 +60,12 @@ const eventItems = events.map((event) => ({
 
 <Layout title="Тусовка — події">
   <div class="flex flex-col gap-6">
-    <HeroText client:load title="Майбутні події" subtitle="Час указано за Києвом." />
+    <HeroText
+      client:load
+      title="Події після заходу"
+      subtitle="Час указано за Києвом."
+      eyebrow="Vice City · нічне життя"
+    />
 
     {q ? (
       <p class="text-sm text-muted-foreground">

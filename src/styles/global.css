@@ -50,39 +50,39 @@
 
 :root {
     color-scheme: dark;
-    /* Linear-style dark tokens: near-black canvas, indigo accent, whisper borders */
-    --background: #08090a;
-    --foreground: #f7f8f8;
-    --card: #0f1011;
-    --card-foreground: #f7f8f8;
-    --popover: #0f1011;
-    --popover-foreground: #f7f8f8;
-    --primary: #5e6ad2;
-    --primary-foreground: #ffffff;
-    --secondary: #191a1b;
-    --secondary-foreground: #d0d6e0;
-    --muted: #191a1b;
-    --muted-foreground: #8a8f98;
-    --accent: #1b1d2b;
-    --accent-foreground: #f7f8f8;
-    --destructive: #b42318;
-    --border: rgba(255, 255, 255, 0.08);
-    --input: rgba(255, 255, 255, 0.10);
-    --ring: #7170ff;
-    --chart-1: #7170ff;
-    --chart-2: #828fff;
-    --chart-3: #10b981;
-    --chart-4: #f7f8f8;
-    --chart-5: #62666d;
-    --radius: 0.5rem;
-    --sidebar: #0f1011;
-    --sidebar-foreground: #f7f8f8;
-    --sidebar-primary: #5e6ad2;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #191a1b;
-    --sidebar-accent-foreground: #f7f8f8;
-    --sidebar-border: rgba(255, 255, 255, 0.06);
-    --sidebar-ring: #7170ff;
+    /* Vice City: neon nights, sunset pink, ocean cyan, deep violet asphalt */
+    --background: #0a0418;
+    --foreground: #fff5fb;
+    --card: #170b2e;
+    --card-foreground: #fff5fb;
+    --popover: #170b2e;
+    --popover-foreground: #fff5fb;
+    --primary: #ff2e88;
+    --primary-foreground: #0a0418;
+    --secondary: #1b1140;
+    --secondary-foreground: #d9d0f5;
+    --muted: #1b1140;
+    --muted-foreground: #b39fd4;
+    --accent: #00e5ff;
+    --accent-foreground: #0a0418;
+    --destructive: #ff3b5c;
+    --border: rgba(0, 229, 255, 0.22);
+    --input: rgba(255, 46, 136, 0.28);
+    --ring: #ff2e88;
+    --chart-1: #ff2e88;
+    --chart-2: #00e5ff;
+    --chart-3: #b967ff;
+    --chart-4: #ffb347;
+    --chart-5: #8b74b8;
+    --radius: 0.75rem;
+    --sidebar: #170b2e;
+    --sidebar-foreground: #fff5fb;
+    --sidebar-primary: #ff2e88;
+    --sidebar-primary-foreground: #0a0418;
+    --sidebar-accent: #00e5ff;
+    --sidebar-accent-foreground: #0a0418;
+    --sidebar-border: rgba(255, 46, 136, 0.2);
+    --sidebar-ring: #00e5ff;
 }
 
 .dark {
@@ -135,9 +135,26 @@
 
 .effects-glow {
   background:
-    radial-gradient(1200px 520px at 50% -8%, rgba(94, 106, 210, 0.28), transparent 62%),
-    radial-gradient(900px 420px at 78% 30%, rgba(113, 112, 255, 0.14), transparent 66%),
+    radial-gradient(1100px 520px at 50% -10%, rgba(255, 46, 136, 0.30), transparent 62%),
+    radial-gradient(900px 460px at 8% 42%, rgba(0, 229, 255, 0.18), transparent 66%),
+    radial-gradient(700px 420px at 92% 68%, rgba(185, 103, 255, 0.20), transparent 68%),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.015), transparent 38%);
+}
+
+/* Vice City neon horizon: perspective grid, fades out toward the top */
+.effects-glow::after {
+  content: '';
+  position: absolute;
+  inset: 46% -20% -10%;
+  background-image:
+    linear-gradient(rgba(0, 229, 255, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 46, 136, 0.12) 1px, transparent 1px);
+  background-size: 100% 34px, 46px 100%;
+  transform: perspective(340px) rotateX(66deg);
+  transform-origin: center bottom;
+  mask-image: linear-gradient(to bottom, transparent, black 45%, black 70%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 45%, black 70%, transparent);
+  opacity: 0.7;
 }
 
 .hero-split {
@@ -148,14 +165,14 @@
 }
 
 .hero-title {
-  letter-spacing: -0.045em;
-  line-height: 1.02;
-  text-shadow: 0 0 42px rgba(113, 112, 255, 0.22);
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+  text-shadow: 0 0 18px rgba(255, 46, 136, 0.45), 0 0 54px rgba(0, 229, 255, 0.24);
 }
 
 .card-surface {
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(160deg, rgba(255, 46, 136, 0.07), rgba(0, 229, 255, 0.03));
+  border: 1px solid rgba(0, 229, 255, 0.24);
   border-radius: 0.75rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 24px rgba(255, 46, 136, 0.08);
 }

@@ -29,7 +29,7 @@ export default function FooterBits({ links }: { links: FooterLink[] }) {
     icon: ICONS[link.icon] ?? ICONS.book,
     label: link.label,
     href: link.href,
-    color: '#7170ff'
+    color: '#ff2e88'
   }));
 
   return (

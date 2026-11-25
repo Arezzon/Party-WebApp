@@ -198,7 +198,7 @@ export default function EventForm({
           )}
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <SpecularButton type="submit" size="lg" tint="#7170ff" textColor="#ffffff">
+            <SpecularButton type="submit" size="lg" tint="#ff2e88" textColor="#0a0418">
               {submitLabel ?? (isEdit ? 'Зберегти зміни' : 'Створити подію')}
             </SpecularButton>
             <a href={isEdit && initial.id ? `/events/${initial.id}` : '/'} className="text-sm text-muted-foreground underline underline-offset-4">
