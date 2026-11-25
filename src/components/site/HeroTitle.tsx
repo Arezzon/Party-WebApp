@@ -1,26 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import ShinyText from '../ShinyText';
 
-/** Hero headline with React Bits ShinyText, theme-aware without dark inline colors. */
+/** Hero headline with the exact ShinyText palette requested for the design. */
 export default function HeroTitle() {
-  const [dark, setDark] = useState(false);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    setDark(root.classList.contains('dark'));
-    const observer = new MutationObserver(() => setDark(root.classList.contains('dark')));
-    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <h1 className="display mt-5 max-w-[15ch] text-[clamp(2.6rem,6.2vw,4.6rem)]">
       <ShinyText
         text="Знайди своїх."
-        color={dark ? '#fafafa' : '#0a0a0a'}
-        shineColor={dark ? '#8ab4ff' : '#ffffff'}
+        color="#b5b5b5"
+        shineColor="#ffffff"
         speed={3}
         delay={1.2}
         angle={115}

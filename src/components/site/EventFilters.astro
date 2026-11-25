@@ -17,8 +17,8 @@
   <span id="filters-badge" class="mono hidden rounded-full bg-foreground px-2 py-0.5 text-[11px] text-background" aria-hidden="true">0</span>
 </button>
 
-<div id="filters-panel" class="card mt-4 p-5 sm:p-6" hidden>
-  <div class="grid gap-5 sm:grid-cols-3">
+<div id="filters-panel" class="card mt-4 w-full basis-full p-5 sm:p-6" hidden>
+  <div class="grid gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
     <label class="field-label">
       <span>Період</span>
       <select id="filter-period" class="field">
@@ -37,7 +37,7 @@
       </select>
     </label>
 
-    <label class="flex items-center gap-3 self-end pb-1 text-sm">
+    <label class="flex items-center gap-3 whitespace-nowrap pb-1 text-sm">
       <input id="filter-free" type="checkbox" class="h-5 w-5 shrink-0 accent-current" />
       <span>Тільки з вільними місцями</span>
     </label>
