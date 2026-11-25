@@ -1,15 +1,13 @@
 'use client';
 
-import ShinyText from '../ShinyText';
+import ThemeShinyText from '../ThemeShinyText';
 
-/** Hero headline with the exact ShinyText palette requested for the design. */
+/** Hero headline: exact palette in dark mode, mirrored palette in light mode. */
 export default function HeroTitle() {
   return (
     <h1 className="display mt-5 max-w-[15ch] text-[clamp(2.6rem,6.2vw,4.6rem)]">
-      <ShinyText
+      <ThemeShinyText
         text="Знайди своїх."
-        color="#b5b5b5"
-        shineColor="#ffffff"
         speed={3}
         delay={1.2}
         angle={115}

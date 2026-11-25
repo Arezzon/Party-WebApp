@@ -1,7 +1,10 @@
 // T035: живий self-audit — двоє користувачів через реальний HTTP-сервер.
 // Запуск: node self-audit.mjs (сервер має слухати BASE_URL).
+import Database from 'better-sqlite3';
+
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:4399';
 const origin = new URL(BASE).origin;
+const db = new Database(process.env.DATABASE_PATH ?? './data/tusivka.db');
 let failures = 0;
 
 function check(name, ok, detail = '') {
@@ -63,6 +66,24 @@ if (id) {
   const self = await fetch(BASE + '/profile', { headers: { cookie: a } });
   const html = await self.text();
   check('author sees own event in profile', html.includes('Аудит подія'));
+
+  const commentText = 'Самоаудит: перевірка скарги';
+  const madeComment = await fetch(BASE + `/api/events/${id}/comments`, {
+    method: 'POST', redirect: 'manual',
+    headers: { cookie: a, 'Content-Type': 'application/json', 'Idempotency-Key': `audit-${suffix}` },
+    body: JSON.stringify({ body: commentText })
+  });
+  check('author creates comment', madeComment.status === 303, String(madeComment.status));
+  const commentId = db.prepare('SELECT id FROM Comments WHERE event_id = ? AND body = ?').get(id, commentText)?.id;
+  if (commentId) {
+    const first = await form(`/api/comments/${commentId}/report`, { reason: 'Спам' }, a);
+    const second = await form(`/api/comments/${commentId}/report`, { reason: 'Спам' }, a);
+    check('report accepted twice', first.status === 303 && second.status === 303, `${first.status}/${second.status}`);
+    const count = db.prepare("SELECT COUNT(*) n FROM Reports WHERE comment_id = ? AND status = 'open'").get(commentId).n;
+    check('duplicate report not stored', count === 1, String(count));
+  }
+  const modQueue = await fetch(BASE + '/api/moderation/reports', { headers: { cookie: a } });
+  check('non-moderator cannot read queue', modQueue.status === 403, String(modQueue.status));
 
   const noOrigin = await form(`/api/events/${id}/edit`, { title: 'X', places: '1', visibility: 'public' }, a, { origin: 'https://evil.example' });
   check('cross-origin mutation rejected', noOrigin.status === 400 || noOrigin.status === 403, String(noOrigin.status));

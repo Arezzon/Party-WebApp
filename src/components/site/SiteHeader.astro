@@ -1,14 +1,16 @@
 ---
 interface Props {
   active: string;
+  moderator?: boolean;
 }
-const { active } = Astro.props;
+const { active, moderator = false } = Astro.props;
 
 const items = [
   { label: 'Події', href: '/', match: (p: string) => p === '/' || p.startsWith('/events/') || p.startsWith('/invite/') },
   { label: 'Створити', href: '/events/new', match: (p: string) => p === '/events/new' },
   { label: 'Профіль', href: '/profile', match: (p: string) => p === '/profile' },
-  { label: 'Правила', href: '/rules', match: (p: string) => p === '/rules' || p === '/privacy' }
+  { label: 'Правила', href: '/rules', match: (p: string) => p === '/rules' || p === '/privacy', mobileHidden: moderator },
+  ...(moderator ? [{ label: 'Модерація', href: '/moderation', match: (p: string) => p === '/moderation' }] : [])
 ];
 ---
 
@@ -24,7 +26,7 @@ const items = [
       {items.map((item) => (
         <a
           href={item.href}
-          class="nav-link"
+          class={`nav-link ${(item as any).mobileHidden ? 'max-sm:hidden!' : ''}`}
           aria-current={item.match(active) ? 'page' : undefined}
           data-nav-link
         >{item.label}</a>

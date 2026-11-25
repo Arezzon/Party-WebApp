@@ -1,0 +1,76 @@
+---
+export const prerender = false;
+import Layout from '../layouts/Layout.astro';
+import { requireUser } from '../lib/auth.ts';
+import { getDb } from '../lib/db.ts';
+import { isModerator, listOpenReports } from '../lib/moderation.ts';
+
+const user = requireUser(Astro);
+if (!user || !isModerator(user.email)) {
+  return new Response('Доступ лише для модераторів.', { status: 403 });
+}
+
+const reports = listOpenReports(getDb());
+const fmt = new Intl.DateTimeFormat('uk-UA', {
+  timeZone: 'Europe/Kyiv', dateStyle: 'medium', timeStyle: 'short'
+});
+---
+
+<Layout title="Модерація — Тусовка" description="Черга скарг на коментарі.">
+  <section class="fade-up">
+    <p class="eyebrow">Черга модератора</p>
+    <h1 class="display mt-4 text-4xl sm:text-5xl">Модерація</h1>
+    <p class="prose-calm mt-4">Відкриті скарги на коментарі. Рішення фіксується в історії.</p>
+    <p class="eyebrow mt-6">{reports.length} відкритих скарг</p>
+  </section>
+
+  <section class="mt-12">
+    {reports.length ? (
+      <ul class="flex flex-col gap-5">
+        {reports.map((report) => (
+          <li class="card p-5 sm:p-6">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <a href={`/events/${report.event_id}`} class="text-lg font-medium tracking-tight hover:underline">
+                {report.event_title}
+              </a>
+              <span class="mono text-xs text-muted-foreground">{fmt.format(new Date(report.created_at))}</span>
+            </div>
+
+            <blockquote class="mt-4 border-l-2 border-border pl-4 text-sm leading-relaxed">
+              {report.comment_body}
+            </blockquote>
+
+            <dl class="mt-5 grid gap-3 text-sm sm:grid-cols-3">
+              <div>
+                <dt class="eyebrow">Автор коментаря</dt>
+                <dd class="mt-1">{report.comment_author}</dd>
+              </div>
+              <div>
+                <dt class="eyebrow">Скаржник</dt>
+                <dd class="mt-1">{report.reporter_name}</dd>
+              </div>
+              <div>
+                <dt class="eyebrow">Причина</dt>
+                <dd class="mt-1">{report.reason}</dd>
+              </div>
+            </dl>
+
+            <div class="mt-6 flex flex-wrap gap-3 border-t border-border pt-5">
+              <form method="post" action={`/api/moderation/${report.id}/dismiss`}>
+                <button type="submit" class="pill pill--ghost pill--sm">Відхилити скаргу</button>
+              </form>
+              <form method="post" action={`/api/moderation/${report.id}/delete`}>
+                <button type="submit" class="pill pill--danger pill--sm">Видалити коментар</button>
+              </form>
+            </div>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <div class="card dots flex flex-col items-center gap-3 px-6 py-16 text-center">
+        <p class="eyebrow">Чисто</p>
+        <p class="text-lg">Відкритих скарг немає.</p>
+      </div>
+    )}
+  </section>
+</Layout>

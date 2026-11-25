@@ -1,7 +1,6 @@
-// @ts-ignore -- Node-типи не встановлені, модуль доступний у рантаймі.
-import { randomUUID } from 'node:crypto';
 import type { APIRoute } from 'astro';
 import { canViewEvent, currentUser, database, friendly, payloadText, readPayload, redirectTo } from '../../../invite/_check';
+import { createOpenReport } from '../../../../lib/moderation';
 
 /** POST /api/comments/:id/report — скарга на коментар; 404 для приватних подій без інвайту. */
 
@@ -40,12 +39,14 @@ export const POST: APIRoute = async (ctx) => {
   if (!reason || reason.length > 500) return friendly(400, 'Вкажіть причину скарги (до 500 символів)');
 
   try {
-    db.prepare('INSERT INTO reports (id, comment_id, reporter_id, reason, created_at) VALUES (?, ?, ?, ?, ?)')
-      .run(randomUUID(), comment.id, user.id || user.user_id, reason, new Date().toISOString());
+    createOpenReport(db, {
+      commentId: comment.id,
+      eventId: comment.event_id,
+      reporterId: String(user.id || user.user_id),
+      reason
+    });
   } catch {
-    const existing = db.prepare('SELECT id FROM reports WHERE comment_id = ? AND reporter_id = ? LIMIT 1')
-      .get(comment.id, user.id || user.user_id);
-    if (!existing) return friendly(400, 'Не вдалося зберегти скаргу');
+    return friendly(400, 'Не вдалося зберегти скаргу');
   }
 
   return redirectTo(ctx as any, `/events/${comment.event_id}`, 303);

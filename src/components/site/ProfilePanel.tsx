@@ -58,6 +58,12 @@ export default function ProfilePanel({ name, created, attending }: Props) {
           <button type="submit" className="pill pill--primary" disabled={saving}>Зберегти</button>
         </form>
         {message && <p role="status" className="notice notice--ok mt-4">{message}</p>}
+        <div className="mt-7 flex flex-wrap items-center gap-3">
+          <form method="post" action="/logout">
+            <button type="submit" className="pill pill--ghost" disabled={saving}>Вийти з акаунта</button>
+          </form>
+          <span className="text-sm text-muted-foreground">Завершити поточну сесію на цьому пристрої.</span>
+        </div>
         <div className="hairline my-7" />
         <button type="button" className="pill pill--danger" onClick={removeAccount} disabled={saving}>Видалити акаунт</button>
         <p className="mt-3 text-sm text-muted-foreground">

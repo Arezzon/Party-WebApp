@@ -42,6 +42,7 @@ export interface AppEnv {
   inviteCookiePrefix: string;
   maxEventYears: number;
   appName: string;
+  moderatorEmails: string[];
 }
 
 export const env: AppEnv = Object.freeze({
@@ -56,7 +57,11 @@ export const env: AppEnv = Object.freeze({
   loginWindowMs: readNumber('LOGIN_WINDOW_MS', 60_000),
   inviteCookiePrefix: readString('INVITE_COOKIE_PREFIX', 'invite_'),
   maxEventYears: readNumber('MAX_EVENT_YEARS', 2),
-  appName: 'Тусовка'
+  appName: 'Тусовка',
+  moderatorEmails: readString('MODERATOR_EMAILS', 'arsen@tusivka.local')
+    .split(',')
+    .map((value) => value.trim().toLocaleLowerCase())
+    .filter(Boolean)
 });
 
 export const getEnv = (): AppEnv => env;

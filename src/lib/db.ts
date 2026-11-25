@@ -152,6 +152,19 @@ CREATE TABLE IF NOT EXISTS Reports (
   event_id TEXT REFERENCES Events(id) ON DELETE CASCADE,
   reporter_id TEXT NOT NULL REFERENCES Users(id) ON DELETE CASCADE,
   reason TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TEXT NOT NULL,
+  resolved_at TEXT,
+  resolved_by TEXT
+);
+CREATE TABLE IF NOT EXISTS ModerationActions (
+  id TEXT PRIMARY KEY,
+  report_id TEXT,
+  comment_id TEXT,
+  event_id TEXT,
+  actor_id TEXT NOT NULL REFERENCES Users(id) ON DELETE CASCADE,
+  action TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON Users(email COLLATE NOCASE);
@@ -214,6 +227,19 @@ function openDatabase(): DbHandle {
     ensureColumn(raw, 'Events', 'invite_token', "TEXT NOT NULL DEFAULT ''");
     ensureColumn(raw, 'Comments', 'author_name_snapshot', "TEXT NOT NULL DEFAULT ''");
     ensureColumn(raw, 'Reports', 'event_id', 'TEXT');
+    ensureColumn(raw, 'Reports', 'status', "TEXT NOT NULL DEFAULT 'open'");
+    ensureColumn(raw, 'Reports', 'resolved_at', 'TEXT');
+    ensureColumn(raw, 'Reports', 'resolved_by', 'TEXT');
+    raw.exec(`UPDATE Reports SET event_id = (SELECT event_id FROM Comments WHERE Comments.id = Reports.comment_id)
+              WHERE event_id IS NULL OR event_id = ''`);
+    // Historical duplicates become dismissed so the partial unique index can be created.
+    raw.exec(`UPDATE Reports SET status = 'dismissed'
+              WHERE status = 'open' AND id NOT IN (
+                SELECT MAX(id) FROM Reports GROUP BY comment_id, reporter_id
+              )`);
+    raw.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_open
+              ON Reports(comment_id, reporter_id) WHERE status = 'open'`);
+    raw.exec('CREATE INDEX IF NOT EXISTS idx_moderation_actions_event ON ModerationActions(event_id)');
   } catch (error) {
     try { raw.close(); } catch { /* ignore */ }
     throw error;

@@ -3,6 +3,7 @@ import '../styles/global.css';
 import FlowBackdrop from '../components/site/FlowBackdrop.astro';
 import SiteHeader from '../components/site/SiteHeader.astro';
 import SiteFooter from '../components/site/SiteFooter.astro';
+import { isModerator } from '../lib/moderation';
 
 interface Props {
   title?: string;
@@ -13,6 +14,9 @@ const {
   title = 'Тусовка — події',
   description = 'Події, вечірки та зустрічі. Обирай своє.'
 } = Astro.props;
+
+const currentUser = (Astro.locals as any).user;
+const moderator = Boolean(currentUser && isModerator(currentUser.email));
 ---
 
 <!doctype html>
@@ -45,7 +49,7 @@ const {
 
     <a class="skip-link" href="#main">До вмісту</a>
     <FlowBackdrop />
-    <SiteHeader active={Astro.url.pathname} />
+    <SiteHeader active={Astro.url.pathname} moderator={moderator} />
 
     <main id="main" class="relative z-10 mx-auto w-full max-w-[1100px] px-5 pb-24 pt-32 sm:px-10 sm:pt-44">
       <slot />

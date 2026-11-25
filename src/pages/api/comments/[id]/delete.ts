@@ -1,7 +1,6 @@
-// @ts-ignore -- Node-типи не встановлені, модуль доступний у рантаймі.
-import { randomUUID } from 'node:crypto';
 import type { APIRoute } from 'astro';
 import { canViewEvent, currentUser, database, friendly, payloadText, readPayload, redirectTo } from '../../../invite/_check';
+import { logModerationAction } from '../../../../lib/moderation';
 
 export const prerender = false;
 
@@ -48,9 +47,14 @@ export const POST: APIRoute = async (ctx) => {
   }
   if (reportFlag && isEventAuthor && !isCommentAuthor) {
     try {
-      db.prepare('INSERT INTO reports (id, comment_id, reporter_id, reason, created_at) VALUES (?, ?, ?, ?, ?)')
-        .run(randomUUID(), comment.id, userId, 'Видалено автором події', new Date().toISOString());
-    } catch { /* скарга не блокує видалення */ }
+      logModerationAction(db, {
+        commentId: comment.id,
+        eventId: comment.event_id,
+        actorId: String(userId),
+        action: 'event_author_delete',
+        reason: 'Видалено автором події'
+      });
+    } catch { /* підстава не блокує видалення */ }
   }
 
   db.prepare('DELETE FROM comments WHERE id = ?').run(comment.id);
