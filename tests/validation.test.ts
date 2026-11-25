@@ -265,7 +265,11 @@ test('гостьова картка коментарів: центрований
   assert.match(detail, /<h2 class="eyebrow">Учасники/, 'секція учасників має заголовок другого рівня');
   assert.match(detail, /<h2 class="eyebrow">Коментарі/, 'секція коментарів має заголовок другого рівня');
   assert.match(detail, /<h3 class="mt-2 text-base font-medium leading-snug">/, 'назва в картці — заголовок третього рівня');
-  assert.match(css, /\.cta-card \{[^}]*radial-gradient/, 'фон картки має акцентний градієнт');
+  const cardCss = css.match(/\.cta-card \{[^}]*\}/)?.[0] ?? '';
+  const iconCss = css.match(/\.cta-card__icon \{[^}]*\}/)?.[0] ?? '';
+  assert.ok(!cardCss.includes('--ring') && !iconCss.includes('--ring'), 'картка не використовує синій акцент --ring');
+  assert.ok(cardCss.includes('var(--foreground)') && iconCss.includes('var(--muted)') && iconCss.includes('var(--foreground)'), 'картка й іконка в нейтральній палітрі сайту');
+  assert.match(cardCss, /radial-gradient/, 'фон картки має м’який нейтральний градієнт');
 });
 
 test('створення події доступне тільки після await requireUser', async () => {
