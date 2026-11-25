@@ -57,6 +57,7 @@ description: "Task list for Cloudflare Workers deployment and CI/CD"
 - [x] T021 [US4] Додати `.github/dependabot.yml` для npm і github-actions
 - [x] T022 [US4] Додати `.github/pull_request_template.md`
 - [x] T023 [US4] Видалити застарілу локальну гілку `master` і стару feature-гілку
+- [x] T024 [US4] Додати `.github/workflows/codeql.yml` для JavaScript/TypeScript
 
 **Independent Test**: Dependabot створює PR; у репозиторії лишилась тільки `main`.
 

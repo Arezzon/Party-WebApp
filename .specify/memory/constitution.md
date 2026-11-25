@@ -48,7 +48,7 @@ Follow-up TODOs: none
 - Стек: Astro 7 SSR на Cloudflare Workers Free + D1 + React 19 + Tailwind 4 + shadcn/ui + React Bits (registry `@reactbits`).
 - Node: ≥22.23.4.
 - Команди: `npm run dev`, `npm run build`, `npm test`, `npx astro check`, `bash scripts/perf-check.sh`.
-- Перед здачею: `npm test` зелений, `astro check` 0 error, `astro build` успішний, perf-check `PASS`, self-audit як другий користувач.
+- Перед здачею: `npm test` зелений, `astro check` 0 error, `astro build` успішний, perf-check `PASS`, self-audit як другий користувач; CodeQL без критичних alert-ів.
 - Деплой тільки через GitHub Actions із `main`; секрети зберігаються в GitHub Secrets.
 
 ### VI. Operational Excellence (NON-NEGOTIABLE)

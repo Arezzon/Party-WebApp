@@ -13,6 +13,13 @@
 - **Steps**: `npm ci` → `npm run build` → `wrangler d1 migrations apply tusivka --remote` → `wrangler deploy --name tusivka`.
 - **Concurrency**: `deploy-production`, `cancel-in-progress: false`.
 
+## CodeQL workflow
+
+- **Triggers**: `push` to `main`, `pull_request` to `main`, weekly Monday 04:27 UTC.
+- **Permissions**: `contents: read`, `security-events: write`.
+- **Languages**: `javascript-typescript`, `build-mode: none`.
+- **Result**: analyses and alerts appear in GitHub Code scanning.
+
 ## Dependabot
 
 - **Ecosystems**: `npm`, `github-actions`.

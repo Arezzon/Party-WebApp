@@ -74,6 +74,7 @@ bash scripts/perf-check.sh  # заміри часу відповіді прод�
 
 - `.github/workflows/ci.yml` — на push у `main`/`refactor/cloudflare-workers-d1` і на PR до `main`: `npm ci`, 32 тести, `astro check`, білд.
 - `.github/workflows/deploy.yml` — на push у `main` і вручну: білд, `wrangler d1 migrations apply tusivka --remote`, `wrangler deploy`.
+- `.github/workflows/codeql.yml` — щотижневий і PR-аналіз JS/TS на SQL-ін'єкції, XSS та інші патерни.
 - `.github/dependabot.yml` — щотижневі PR на оновлення npm-залежностей і GitHub Actions (група minor/patch разом).
 
 Обов'язкові секрети репозиторію (Settings → Secrets and variables → Actions):
