@@ -246,6 +246,13 @@ test('сітка подій на мобільному: дата прихован
   assert.match(home, /hidden text-xs text-muted-foreground sm:block/, 'дубль дати на мобільному має бути прихований');
 });
 
+test('довга назва події без пробілів не розтягує сторінку події', async () => {
+  const detail = await readFile(new URL('../src/components/site/EventDetail.astro', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  assert.match(css, /\.display \{[^}]*overflow-wrap:\s*anywhere/, 'заголовок має переносити довге слово без пробілів');
+  assert.match(detail, /min-w-0 order-2 lg:order-1/, 'grid-дитина має min-w-0, інакше min-width:auto розтягує трек');
+});
+
 test('створення події доступне тільки після await requireUser', async () => {
   const page = await readFile(new URL('../src/pages/events/new.astro', import.meta.url), 'utf8');
   assert.match(page, /await requireUser\(Astro\)/, 'перевірка сесії має бути асинхронною');
