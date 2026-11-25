@@ -5,7 +5,7 @@ import EventForm from '../../components/site/EventForm';
 import { requireUser } from '../../lib/auth.ts';
 import { maxEventDateInput } from '../../lib/timezone.ts';
 
-const user = requireUser(Astro);
+const user = await requireUser(Astro);
 if (!user) {
   return Astro.redirect('/login?next=/events/new', 302);
 }
