@@ -2,6 +2,7 @@
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
 import { getDb } from '../lib/db';
+import { coverUrl } from '../lib/events.ts';
 import HeroTitle from '../components/site/HeroTitle';
 import EventFilters from '../components/site/EventFilters.astro';
 
@@ -15,7 +16,8 @@ const rows = await db
   .prepare(
     `SELECT e.id, e.title, e.starts_at, e.places,
             (SELECT COUNT(*) FROM RSVP r WHERE r.event_id = e.id) AS taken,
-            (e.cover_blob IS NOT NULL) AS has_cover
+            (e.cover_blob IS NOT NULL) AS has_cover,
+            COALESCE(e.cover_version, '') AS cover_version
        FROM Events e
       WHERE e.visibility = 'public' AND e.starts_at > ?
       ORDER BY e.starts_at ASC
@@ -28,6 +30,7 @@ const rows = await db
   places: number;
   taken: number;
   has_cover: number;
+  cover_version: string;
 }>;
 
 const filtered = needle
@@ -52,7 +55,7 @@ const events = filtered.map((event) => {
     day: parts.find((p) => p.type === 'day')?.value ?? '',
     month: parts.find((p) => p.type === 'month')?.value ?? '',
     free: Math.max(0, event.places - event.taken),
-    cover: event.has_cover ? `/events/${event.id}/cover` : null
+    cover: event.has_cover ? `${coverUrl({ id: event.id, coverVersion: event.cover_version })}` : null
   };
 });
 ---

@@ -26,6 +26,7 @@ export interface EventRecord {
   places: number;
   coverBlob: Uint8Array | null;
   coverMime: string;
+  coverVersion: string;
   visibility: EventVisibility;
   inviteToken: string;
   createdAt: string;
@@ -61,8 +62,8 @@ const RSVPS = 'RSVP';
 const EC = {
   id: 'id', author_id: 'author_id', title: 'title', description: 'description',
   starts_at: 'starts_at', places: 'places', cover_blob: 'cover_blob',
-  cover_mime: 'cover_mime', visibility: 'visibility', invite_token: 'invite_token',
-  created_at: 'created_at'
+  cover_mime: 'cover_mime', cover_version: 'cover_version', visibility: 'visibility',
+  invite_token: 'invite_token', created_at: 'created_at'
 } as const;
 const UC = { id: 'id', name: 'name', email: 'email' } as const;
 const RC = { event_id: 'event_id', user_id: 'user_id' } as const;
@@ -205,6 +206,7 @@ async function mapEvent(row: Record<string, unknown> | undefined): Promise<Event
     places: Number(get('places')),
     coverBlob: blob ?? null,
     coverMime: String(get('cover_mime') ?? 'image/webp'),
+    coverVersion: String(get('cover_version') ?? ''),
     visibility: (get('visibility') === 'private' ? 'private' : 'public') as EventVisibility,
     inviteToken: String(get('invite_token') ?? ''),
     createdAt: String(get('created_at') ?? ''),
@@ -223,6 +225,7 @@ export async function getEvent(id: string): Promise<EventRecord | null> {
 export interface CoverRecord {
   blob: Uint8Array | null;
   mime: string;
+  version: string;
   visibility: EventVisibility;
   inviteToken: string;
   createdAt: string;
@@ -232,16 +235,23 @@ export interface CoverRecord {
 export async function getCover(id: string): Promise<CoverRecord | null> {
   const s = await schema();
   const row = (await s.db.prepare(
-    `SELECT ${quote(s.ec.cover_blob)}, ${quote(s.ec.cover_mime)}, ${quote(s.ec.visibility)}, ${quote(s.ec.invite_token)}, ${quote(s.ec.created_at)} FROM ${quote(s.events)} WHERE ${quote(s.ec.id)} = ?`
+    `SELECT ${quote(s.ec.cover_blob)}, ${quote(s.ec.cover_mime)}, ${quote(s.ec.cover_version)}, ${quote(s.ec.visibility)}, ${quote(s.ec.invite_token)}, ${quote(s.ec.created_at)} FROM ${quote(s.events)} WHERE ${quote(s.ec.id)} = ?`
   ).get(id)) as Record<string, unknown> | undefined;
   if (!row) return null;
   return {
     blob: (row[s.ec.cover_blob] as Uint8Array | null | undefined) ?? null,
     mime: String(row[s.ec.cover_mime] ?? 'image/png'),
+    version: String(row[s.ec.cover_version] ?? ''),
     visibility: (row[s.ec.visibility] === 'private' ? 'private' : 'public') as EventVisibility,
     inviteToken: String(row[s.ec.invite_token] ?? ''),
     createdAt: String(row[s.ec.created_at] ?? '')
   };
+}
+
+/** Versioned path busts the edge cache when a cover is replaced. */
+export function coverUrl(event: Pick<EventRecord, 'id' | 'coverVersion'>): string {
+  const base = `/events/${event.id}/cover`;
+  return event.coverVersion ? `${base}?v=${encodeURIComponent(event.coverVersion)}` : base;
 }
 
 export async function listPublicEvents(search = ''): Promise<EventRecord[]> {
@@ -327,8 +337,8 @@ async function insertEvent(input: EventInput): Promise<EventRecord> {
   if (input.cover) cover = await coverBytes(input.cover);
   const inviteToken = randomBytes(32).toString('hex');
   const createdAt = new Date().toISOString();
-  const columns = [s.ec.id, s.ec.author_id, s.ec.title, s.ec.description, s.ec.starts_at, s.ec.places, s.ec.cover_blob, s.ec.cover_mime, s.ec.visibility, s.ec.invite_token, s.ec.created_at];
-  const values = [id, input.authorId, String(input.title).trim(), String(input.description ?? '').trim(), startsAt, normalizePlaces(input.places), cover?.bytes ?? null, cover?.mime ?? null, input.visibility === 'private' ? 'private' : 'public', inviteToken, createdAt];
+  const columns = [s.ec.id, s.ec.author_id, s.ec.title, s.ec.description, s.ec.starts_at, s.ec.places, s.ec.cover_blob, s.ec.cover_mime, s.ec.cover_version, s.ec.visibility, s.ec.invite_token, s.ec.created_at];
+  const values = [id, input.authorId, String(input.title).trim(), String(input.description ?? '').trim(), startsAt, normalizePlaces(input.places), cover?.bytes ?? null, cover?.mime ?? null, cover ? randomUUID() : '', input.visibility === 'private' ? 'private' : 'public', inviteToken, createdAt];
   await s.db.prepare(
     `INSERT INTO ${quote(s.events)} (${columns.map(quote).join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`
   ).run(...values);
@@ -389,6 +399,7 @@ export async function updateEvent(id: string, userId: string, patch: EventPatch)
     const cover = await coverBytes(patch.cover);
     put(s.ec.cover_blob, cover.bytes);
     put(s.ec.cover_mime, cover.mime);
+    put(s.ec.cover_version, randomUUID());
   }
   if (!sets.length) return current;
   values.push(id);

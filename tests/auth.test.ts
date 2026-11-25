@@ -82,7 +82,7 @@ test('після 10 невдалих входів повертається 429-�
       return e?.code === 'rate_limited' && e?.message === 'Забагато спроб. Зачекайте хвилину.';
     }
   );
-  auth.clearLoginFailures(key);
+  await auth.clearLoginFailures(key);
 });
 
 test('вихід інвалідує cookie: стара сесія більше не дає користувача', async () => {
