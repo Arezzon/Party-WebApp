@@ -1,7 +1,9 @@
 ---
 export const prerender = false;
 import Layout from '../../../layouts/Layout.astro';
-import EventForm from '../../../components/EventForm.tsx';
+import EventForm from '../../../components/site/EventForm';
+import SpecularButton from '../../../components/SpecularButton';
+import SiteHeading from '../../../components/site/SiteHeading';
 import { requireUser } from '../../../lib/auth.ts';
 import { getAttendees, getEvent, toKyivInput } from '../../../lib/events.ts';
 import { maxEventDateInput } from '../../../lib/timezone.ts';
@@ -14,20 +16,13 @@ if (!user) {
 const id = Astro.params.id ?? '';
 const event = getEvent(id);
 if (!event) {
-  return new Response('Подію не знайдено.', {
-    status: 404,
-    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Content-Type-Options': 'nosniff' }
-  });
+  return new Response('Подію не знайдено.', { status: 404 });
 }
 if (event.authorId !== user.id) {
-  return new Response('Редагувати подію може лише автор.', {
-    status: 403,
-    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Content-Type-Options': 'nosniff' }
-  });
+  return new Response('Редагувати подію може лише автор.', { status: 403 });
 }
 
 const attendees = getAttendees(id);
-const maxDate = maxEventDateInput();
 const initial = {
   id: event.id,
   title: event.title,
@@ -40,21 +35,20 @@ const initial = {
 ---
 
 <Layout title={`Редагування: ${event.title} — Тусовка`}>
-  <main class="mx-auto max-w-4xl px-4 py-10">
-    <p class="mb-4 text-sm text-muted-foreground">
-      <a href={`/events/${event.id}`} class="underline underline-offset-4">← До події</a>
-    </p>
-    <EventForm client:load action={`/api/events/${event.id}/edit`} initial={initial} maxDate={maxDate} />
+  <div class="flex flex-col gap-8">
+    <SiteHeading client:load eyebrow="Контрольна кімната" title="Редагувати подію" subtitle="Тримай місто в тонусі." />
 
-    <section class="mx-auto mt-10 max-w-2xl rounded-2xl border border-border bg-card p-6">
-      <h2 class="mb-3 text-lg font-medium">Учасники ({attendees.length})</h2>
+    <EventForm client:load action={`/api/events/${event.id}/edit`} initial={initial} maxDate={maxEventDateInput()} />
+
+    <section class="vc-panel p-6">
+      <h2 class="mb-3 text-lg font-semibold">Учасники · {attendees.length}</h2>
       {
         attendees.length === 0 ? (
           <p class="text-sm text-muted-foreground">Поки ніхто не записався.</p>
         ) : (
           <ul class="flex flex-col gap-2 text-sm">
             {attendees.map((person) => (
-              <li class="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2">
+              <li class="flex items-center justify-between gap-3 rounded-lg bg-secondary/60 px-3 py-2">
                 <span class="font-medium">{person.name}</span>
                 <span class="text-muted-foreground">{person.email}</span>
               </li>
@@ -64,15 +58,13 @@ const initial = {
       }
     </section>
 
-    <section class="mx-auto mt-6 max-w-2xl">
+    <section class="vc-panel flex flex-wrap items-center justify-between gap-4 p-6">
+      <p class="text-sm text-muted-foreground">Видалення незворотнє.</p>
       <form method="post" action={`/api/events/${event.id}/delete`}>
-        <button
-          type="submit"
-          class="rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/20"
-        >
+        <SpecularButton client:load type="submit" size="sm" tint="#ff3d5f" textColor="#07020f">
           Видалити подію
-        </button>
+        </SpecularButton>
       </form>
     </section>
-  </main>
+  </div>
 </Layout>

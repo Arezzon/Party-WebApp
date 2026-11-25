@@ -2,25 +2,20 @@
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
 import { getDb } from '../lib/db';
-import HeroText from '../components/bits/HeroText';
-import GlitchLabel from '../components/GlitchLabel';
-import PromoBanner from '../components/bits/PromoBanner';
-import EventBrowser from '../components/bits/EventBrowser';
+import SiteHeading from '../components/site/SiteHeading';
+import PromoStrip from '../components/site/PromoStrip';
+import EventExplorer, { type EventItem } from '../components/site/EventExplorer';
 
-/**
- * Головна: майбутні публічні події + пошук за назвою ?q=.
- * Пошук регістронезалежний для кирилиці: SQLite LIKE/LOWER працюють лише з ASCII,
- * тому фільтрація відбувається в JS через toLocaleLowerCase('uk-UA').
- */
 const q = (Astro.url.searchParams.get('q') ?? '').trim();
 const needle = q.toLocaleLowerCase('uk-UA');
 
 const rawDb: any = getDb();
 const db: any = rawDb?.db ?? rawDb;
 const now = new Date().toISOString();
+
 const rows = db
   .prepare(
-    `SELECT e.id, e.title, e.description, e.starts_at, e.places,
+    `SELECT e.id, e.title, e.starts_at, e.places,
             (SELECT COUNT(*) FROM RSVP r WHERE r.event_id = e.id) AS taken,
             (e.cover_blob IS NOT NULL) AS has_cover
        FROM Events e
@@ -31,14 +26,13 @@ const rows = db
   .all(now) as Array<{
   id: string;
   title: string;
-  description: string | null;
   starts_at: string;
   places: number;
   taken: number;
   has_cover: number;
 }>;
 
-const events = needle
+const filtered = needle
   ? rows.filter((event) => String(event.title ?? '').toLocaleLowerCase('uk-UA').includes(needle))
   : rows;
 
@@ -48,10 +42,9 @@ const fmt = new Intl.DateTimeFormat('uk-UA', {
   timeStyle: 'short'
 });
 
-const eventItems = events.map((event) => ({
+const events: EventItem[] = filtered.map((event) => ({
   id: event.id,
   title: event.title,
-  description: event.description ? String(event.description).slice(0, 90) : 'Подія без опису',
   date: fmt.format(new Date(event.starts_at)),
   free: Math.max(0, event.places - event.taken),
   cover: event.has_cover ? `/events/${event.id}/cover` : null
@@ -59,28 +52,22 @@ const eventItems = events.map((event) => ({
 ---
 
 <Layout title="Тусовка — події">
-  <div class="flex flex-col gap-6">
-    <HeroText
+  <div class="flex flex-col gap-8">
+    <SiteHeading
       client:load
-      title="Події після заходу"
-      subtitle="Час указано за Києвом."
       eyebrow="Vice City · нічне життя"
+      title="Події після заходу"
+      subtitle="Обирай своє. Час указано за Києвом."
     />
 
     {q ? (
       <p class="text-sm text-muted-foreground">
-        Результати пошуку: <GlitchLabel client:load text={`«${q}»`} />
+        Результати пошуку: <span class="vc-chip">«{q}»</span>
       </p>
     ) : (
-      <PromoBanner client:load href="/events/new" />
+      <PromoStrip client:load href="/events/new" />
     )}
 
-    {eventItems.length === 0 ? (
-      <p class="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
-        Подій поки немає. Створіть першу!
-      </p>
-    ) : (
-      <EventBrowser client:load query={q} events={eventItems} />
-    )}
+    <EventExplorer client:load query={q} events={events} />
   </div>
 </Layout>

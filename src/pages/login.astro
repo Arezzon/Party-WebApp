@@ -1,7 +1,7 @@
 ---
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
-import AuthForm from '../components/AuthForm.tsx';
+import AuthForm from '../components/site/AuthForm';
 import { loginSchema } from '../lib/validation.ts';
 import {
   authenticateUser,
@@ -57,13 +57,11 @@ if (Astro.request.method === 'POST') {
 ---
 
 <Layout title="Вхід — Тусовка">
-  <main class="mx-auto flex min-h-[70vh] items-center px-4 py-10">
-    <AuthForm
-      client:load
-      mode="login"
-      error={error}
-      next={String(Astro.url.searchParams.get('next') ?? '')}
-      notice={Astro.url.searchParams.get('registered') === '1' ? 'Акаунт створено. Увійдіть, будь ласка.' : ''}
-    />
-  </main>
+  <AuthForm
+    client:load
+    mode="login"
+    error={error}
+    next={String(Astro.url.searchParams.get('next') ?? '')}
+    notice={Astro.url.searchParams.get('registered') === '1' ? 'Акаунт створено. Увійдіть, будь ласка.' : ''}
+  />
 </Layout>

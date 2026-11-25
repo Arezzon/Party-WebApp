@@ -3,12 +3,6 @@
 import type { ReactNode } from 'react';
 import GlassIcons, { type GlassIconsItem } from '../GlassIcons';
 
-interface FooterLink {
-  label: string;
-  href: string;
-  icon: string;
-}
-
 const ICONS: Record<string, ReactNode> = {
   shield: (
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -24,19 +18,18 @@ const ICONS: Record<string, ReactNode> = {
   )
 };
 
-export default function FooterBits({ links }: { links: FooterLink[] }) {
-  const items: GlassIconsItem[] = links.map((link) => ({
-    icon: ICONS[link.icon] ?? ICONS.book,
-    label: link.label,
-    href: link.href,
-    color: '#ff2e88'
-  }));
+export default function SiteFooter() {
+  const items: GlassIconsItem[] = [
+    { icon: ICONS.shield, label: 'Конфіденційність', href: '/privacy', color: '#10e0ff' },
+    { icon: ICONS.book, label: 'Правила', href: '/rules', color: '#ff2d87' }
+  ];
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 pb-10">
+    <footer className="relative z-10 mx-auto w-full max-w-5xl px-4 pb-10">
+      <div className="vc-divider mb-6" />
       <GlassIcons
         items={items}
-        size={54}
+        size={52}
         gap={14}
         columns={2}
         theme="dark"
@@ -44,7 +37,9 @@ export default function FooterBits({ links }: { links: FooterLink[] }) {
         hover="lift"
         intro
       />
-      <p className="mt-4 text-sm text-muted-foreground">© Тусовка. Час подій вказано за Києвом.</p>
-    </div>
+      <p className="mt-4 text-center text-xs tracking-wide text-muted-foreground sm:text-sm">
+        © Тусовка · Час подій за Києвом · After dark, on purpose.
+      </p>
+    </footer>
   );
 }

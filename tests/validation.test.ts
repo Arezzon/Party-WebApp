@@ -231,7 +231,7 @@ test('завантаження: >10MB — 413, HTML/EXE/SVG-with-script — 400'
 });
 
 test('шапка на 375px: підписи не ламаються по складах', async () => {
-  const source = await readFile(new URL('../src/components/Header.astro', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../src/components/site/SiteChrome.tsx', import.meta.url), 'utf8');
   assert.match(source, /white-space:\s*nowrap|whitespace-nowrap/, 'пункти шапки мають бути нерозривними');
   assert.doesNotMatch(source, /word-break:\s*break-all/, 'не можна рвати слова по складах');
 });

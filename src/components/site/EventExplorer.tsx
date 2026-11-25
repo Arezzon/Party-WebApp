@@ -7,7 +7,6 @@ import Counter from '../Counter';
 export interface EventItem {
   id: string;
   title: string;
-  description: string;
   date: string;
   free: number;
   cover: string | null;
@@ -18,53 +17,50 @@ interface Props {
   events: EventItem[];
 }
 
-export default function EventBrowser({ query, events }: Props) {
+export default function EventExplorer({ query, events }: Props) {
   const items: AnimatedListItem[] = events.map((event) => ({
     id: event.id,
+    image: event.cover ?? undefined,
     title: event.title,
     description: event.date,
-    image: event.cover || undefined,
     meta: (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <span className="inline-flex items-center gap-1 text-[var(--vc-cyan)]">
         вільно&nbsp;
-        <Counter
-          value={event.free}
-          fontSize={13}
-          fontWeight={600}
-          textColor="#00e5ff"
-          duration={0.8}
-          intro
-        />
+        <Counter value={event.free} fontSize={13} fontWeight={700} textColor="#10e0ff" intro />
       </span>
     )
   }));
 
   return (
-    <div className="flex flex-col gap-6">
+    <section className="flex flex-col gap-5">
       <CurvedInput
         defaultValue={query}
         onSubmit={(value) => {
           const q = value.trim();
           window.location.href = q ? `/?q=${encodeURIComponent(q)}` : '/';
         }}
-        placeholder="Пошук подій за назвою…"
+        placeholder="Шукаємо подію…"
         buttonText="Знайти"
         ariaLabel="Пошук подій за назвою"
         type="search"
         width="100%"
-        height={64}
-        bend={16}
+        height={62}
+        bend={14}
         theme="dark"
-        backgroundColor="#170b2e"
-        textColor="#fff5fb"
-        placeholderColor="#b39fd4"
-        borderColor="rgba(0,229,255,0.35)"
-        buttonColor="#ff2e88"
-        buttonTextColor="#0a0418"
-        shadowColor="#ff2e88"
+        backgroundColor="#140a26"
+        textColor="#fdf4ff"
+        placeholderColor="#a48bc4"
+        borderColor="rgba(16,224,255,0.34)"
+        buttonColor="#ff2d87"
+        buttonTextColor="#07020f"
+        shadowColor="#ff2d87"
       />
 
-      {events.length === 0 ? null : (
+      {events.length === 0 ? (
+        <div className="vc-panel p-10 text-center text-sm text-muted-foreground">
+          Подій поки немає. Створіть першу — і місто прокинеться.
+        </div>
+      ) : (
         <AnimatedList
           items={items}
           onItemSelect={(item) => {
@@ -78,16 +74,15 @@ export default function EventBrowser({ query, events }: Props) {
           animateOnce
           stagger={0.05}
           showGradients
-          displayScrollbar={false}
           frame
           theme="dark"
-          accentColor="#ff2e88"
-          radius={14}
+          accentColor="#ff2d87"
+          radius={18}
           gap={12}
           width="100%"
-          maxHeight={620}
+          className="vc-panel p-2"
         />
       )}
-    </div>
+    </section>
   );
 }

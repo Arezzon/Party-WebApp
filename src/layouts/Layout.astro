@@ -1,9 +1,8 @@
 ---
 import '../styles/global.css';
-import SiteNav from '../components/bits/SiteNav';
-import FooterBits from '../components/bits/FooterBits';
-import SiteEffects from '../components/SiteEffects.astro';
-import ClickSpark from '../components/ClickSpark';
+import SiteChrome from '../components/site/SiteChrome';
+import Background from '../components/site/Background';
+import SiteFooter from '../components/site/SiteFooter';
 
 interface Props {
   title?: string;
@@ -11,8 +10,8 @@ interface Props {
 }
 
 const {
-  title = 'Тусовка — події з обмеженими місцями',
-  description = 'Створюйте події, записуйтеся на них і спілкуйтеся українською.'
+  title = 'Тусовка — події',
+  description = 'Події, вечірки та зустрічі. Обирай своє.'
 } = Astro.props;
 ---
 
@@ -28,41 +27,14 @@ const {
     <link rel="icon" href="/favicon.ico" />
     <title>{title}</title>
   </head>
-  <body class="min-h-screen bg-background text-foreground antialiased">
-    <SiteEffects />
+  <body class="min-h-screen">
+    <Background client:load />
+    <SiteChrome client:load activeHref={Astro.url.pathname} />
     <div class="relative z-10">
-    <SiteNav
-      client:load
-      activeHref={Astro.url.pathname}
-      links={[
-        { label: 'Події', href: '/' },
-        { label: 'Створити', href: '/events/new' },
-        { label: 'Профіль', href: '/profile' },
-        { label: 'Правила', href: '/rules' }
-      ]}
-    />
-    <ClickSpark
-      client:load
-      sparkColor={['#ff2e88', '#00e5ff', '#fff5fb']}
-      sparkSize={8}
-      sparkRadius={28}
-      sparkCount={8}
-      duration={380}
-      easing="ease-out"
-      ring={false}
-      layer="front"
-    >
-    <main class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <slot />
-    </main>
-    </ClickSpark>
-    <FooterBits
-      client:load
-      links={[
-        { label: 'Політика конфіденційності', href: '/privacy', icon: 'shield' },
-        { label: 'Правила сервісу', href: '/rules', icon: 'book' }
-      ]}
-    />
+      <main class="mx-auto w-full max-w-5xl px-4 pb-12 pt-10 sm:px-6">
+        <slot />
+      </main>
+      <SiteFooter client:load />
     </div>
   </body>
 </html>

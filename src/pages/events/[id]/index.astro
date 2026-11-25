@@ -1,39 +1,47 @@
 ---
 export const prerender = false;
 import Layout from '../../../layouts/Layout.astro';
+import EventDetail from '../../../components/site/EventDetail';
 import { requireUser } from '../../../lib/auth.ts';
 import { getDb } from '../../../lib/db.ts';
 import { canViewEventFromRequest, getAttendees, getEvent, rsvpCount } from '../../../lib/events.ts';
 import { formatKyiv } from '../../../lib/timezone.ts';
-import EventDetailBits from '../../../components/bits/EventDetailBits';
 
 const id = Astro.params.id ?? '';
 const event = getEvent(id);
 if (!event || !canViewEventFromRequest(event, Astro.cookies, Astro.url)) {
-  return new Response('Подію не знайдено.', {
-    status: 404,
-    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Content-Type-Options': 'nosniff' }
-  });
+  return new Response('Подію не знайдено.', { status: 404 });
 }
 
 const user = requireUser(Astro);
 const isAuthor = Boolean(user && user.id === event.authorId);
-const attendees = getAttendees(id);
 const left = Math.max(0, event.places - rsvpCount(id));
 
 let going = false;
 if (user) {
-  going = Boolean(
-    getDb().prepare('SELECT 1 FROM RSVP WHERE event_id = ? AND user_id = ?').get(id, user.id)
-  );
+  going = Boolean(getDb().prepare('SELECT 1 FROM RSVP WHERE event_id = ? AND user_id = ?').get(id, user.id));
 }
+
+const rawDb: any = getDb();
+const db: any = rawDb?.db ?? rawDb;
+const commentRows = (db
+  .prepare('SELECT id, body, author_id, author_name_snapshot, created_at FROM comments WHERE event_id = ? ORDER BY created_at ASC, id ASC')
+  .all(id) ?? []) as Array<{ id: string; body: string; author_id: string | null; author_name_snapshot: string; created_at: string }>;
+const comments = commentRows.map((row) => ({
+  id: String(row.id),
+  body: String(row.body ?? ''),
+  authorId: String(row.author_id ?? ''),
+  author: String(row.author_name_snapshot || 'Знайомець'),
+  createdAt: formatKyiv(row.created_at)
+}));
+
 const idempotencyKey = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
   ? crypto.randomUUID()
   : `${Date.now()}`;
 ---
 
 <Layout title={`${event.title} — Тусовка`}>
-  <EventDetailBits
+  <EventDetail
     client:load
     id={event.id}
     title={event.title}
@@ -47,6 +55,8 @@ const idempotencyKey = typeof crypto !== 'undefined' && typeof crypto.randomUUID
     isAuthor={isAuthor}
     going={going}
     idempotencyKey={idempotencyKey}
-    attendees={attendees.map((person: { name: string }) => String(person.name))}
+    attendees={getAttendees(id).map((person: { name: string }) => String(person.name))}
+    comments={comments}
+    userId={user ? String(user.id) : ''}
   />
 </Layout>

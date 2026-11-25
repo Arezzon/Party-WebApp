@@ -1,9 +1,8 @@
 ---
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
-import ProfileForm from '../components/ProfileForm';
-import ProfileBits from '../components/bits/ProfileBits';
-import HeroText from '../components/bits/HeroText';
+import ProfilePanel from '../components/site/ProfilePanel';
+import SiteHeading from '../components/site/SiteHeading';
 import { currentUser, database } from './invite/_check';
 
 const user = await currentUser(Astro as any);
@@ -31,9 +30,8 @@ const userName = String(user.name ?? '');
 
 <Layout title="Профіль — Тусовка">
   <div class="flex flex-col gap-8">
-    <HeroText client:load title="Мій профіль" subtitle="Тут ви керуєте своїми даними." />
-
-    <ProfileBits
+    <SiteHeading client:load eyebrow="Особиста справа" title="Мій профіль" subtitle="Тут ви керуєте своїми даними." />
+    <ProfilePanel
       client:load
       name={userName}
       created={created.map((event) => ({
@@ -48,7 +46,5 @@ const userName = String(user.name ?? '');
         meta: formatKyiv(event.starts_at)
       }))}
     />
-
-    <ProfileForm client:load name={userName} />
   </div>
 </Layout>

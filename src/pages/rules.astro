@@ -1,27 +1,27 @@
 ---
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
-import HeroText from '../components/bits/HeroText';
+import SiteHeading from '../components/site/SiteHeading';
 import NeonGlyphs from '../components/NeonGlyphs';
 ---
 
 <Layout title="Правила сервісу — Тусовка">
   <div class="mx-auto flex max-w-3xl flex-col gap-6">
-    <div class="h-36 overflow-hidden rounded-xl border border-border" aria-hidden="true">
+    <div class="h-32 overflow-hidden rounded-2xl border border-[var(--vc-cyan)]/25" aria-hidden="true">
       <NeonGlyphs
         client:load
-        colors={['#ff2e88', '#ff2e88', '#c7ccd8']}
-        characters="ТУСОВКА01{}/\"
+        colors={['#ff2d87', '#10e0ff', '#b45cff']}
+        characters={'ТУСОВКА01{}/"'}
         fontFamily="system-ui, sans-serif"
         cellSize={18}
         depth={10}
         tilt={22}
-        speed={0.18}
+        speed={0.16}
         density={0.35}
         glow={0.7}
         flicker={0.3}
         scramble={0.25}
-        opacity={0.32}
+        opacity={0.34}
         fade={0.65}
         intro
         mouseInteraction={false}
@@ -29,10 +29,10 @@ import NeonGlyphs from '../components/NeonGlyphs';
       />
     </div>
 
-    <HeroText client:load title="Правила сервісу" subtitle="«Тусовка» — місце для безпечних зустрічей." />
+    <SiteHeading client:load title="Правила сервісу" subtitle="«Тусовка» — місце для безпечних зустрічей." eyebrow="Код міста" />
 
-    <section class="flex flex-col gap-2">
-      <h2 class="text-lg font-medium">1. Повага до учасників</h2>
+    <section class="vc-panel p-6">
+      <h2 class="mb-2 text-lg font-semibold">1. Повага до учасників</h2>
       <ul class="list-disc pl-5 text-sm text-muted-foreground">
         <li>Не публікуйте образи, погрози, дискримінацію, спам і рекламу.</li>
         <li>Не видавайте себе за інших людей і не поширюйте чужі персональні дані.</li>
@@ -40,8 +40,8 @@ import NeonGlyphs from '../components/NeonGlyphs';
       </ul>
     </section>
 
-    <section class="flex flex-col gap-2">
-      <h2 class="text-lg font-medium">2. Події та записи</h2>
+    <section class="vc-panel p-6">
+      <h2 class="mb-2 text-lg font-semibold">2. Події та записи</h2>
       <ul class="list-disc pl-5 text-sm text-muted-foreground">
         <li>Вказуйте правдиву дату, опис і кількість місць.</li>
         <li>Приватні події доступні лише за посиланням-запрошенням; не поширюйте його без згоди автора.</li>
@@ -49,20 +49,20 @@ import NeonGlyphs from '../components/NeonGlyphs';
       </ul>
     </section>
 
-    <section class="flex flex-col gap-2">
-      <h2 class="text-lg font-medium">3. Скарги й видалення коментарів</h2>
-      <p class="rounded-lg border border-border p-4 text-sm text-muted-foreground">
-        Якщо коментар порушує правила, натисніть кнопку «Поскаржитися» на сторінці події та вкажіть причину.
+    <section class="vc-panel p-6">
+      <h2 class="mb-2 text-lg font-semibold">3. Скарги й видалення коментарів</h2>
+      <p class="text-sm text-muted-foreground">
+        Якщо коментар порушує правила, натисніть «Поскаржитися» на сторінці події та вкажіть причину.
         Автор коментаря й автор події можуть видалити коментар. Скарги розглядає модератор сервісу.
       </p>
     </section>
 
-    <section class="flex flex-col gap-2">
-      <h2 class="text-lg font-medium">4. Ваші дані</h2>
+    <section class="vc-panel p-6">
+      <h2 class="mb-2 text-lg font-semibold">4. Ваші дані</h2>
       <p class="text-sm text-muted-foreground">
-        Ви можете змінити ім’я або видалити акаунт у <a href="/profile" class="underline">профілі</a>.
+        Ви можете змінити ім’я або видалити акаунт у <a href="/profile" class="vc-link">профілі</a>.
         Після видалення сесії, події та записи знищуються, а коментарі знеособлюються.
-        Детальніше — у <a href="/privacy" class="underline">політиці конфіденційності</a>.
+        Детальніше — у <a href="/privacy" class="vc-link">політиці конфіденційності</a>.
       </p>
     </section>
   </div>
