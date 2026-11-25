@@ -26,10 +26,10 @@ export const POST: APIRoute = async (ctx) => {
   if (!name) return friendly(400, 'Ім’я має бути від 1 до 80 символів');
 
   const db = await database();
-  db.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, user.id);
+  await db.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, user.id);
   // Коментарі показують актуальне ім’я; знеособлення зберігає знімок на момент видалення.
   try {
-    db.prepare('UPDATE comments SET author_name_snapshot = ? WHERE author_id = ?').run(name, user.id);
+    await db.prepare('UPDATE comments SET author_name_snapshot = ? WHERE author_id = ?').run(name, user.id);
   } catch {
     // колонка знімка може бути відсутня у старій схемі
   }

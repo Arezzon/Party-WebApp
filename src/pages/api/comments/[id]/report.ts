@@ -13,7 +13,7 @@ export const POST: APIRoute = async (ctx) => {
   const commentId = ctx.params?.id ?? '';
   if (!commentId) return friendly(404, 'Коментар не знайдено');
   const db = await database();
-  const comment = db.prepare(
+  const comment = await db.prepare(
     `SELECT c.id, c.event_id, c.author_id,
             e.visibility, e.invite_token, e.author_id AS event_author_id
        FROM comments c JOIN events e ON e.id = c.event_id
@@ -39,7 +39,7 @@ export const POST: APIRoute = async (ctx) => {
   if (!reason || reason.length > 500) return friendly(400, 'Вкажіть причину скарги (до 500 символів)');
 
   try {
-    createOpenReport(db, {
+    await createOpenReport(db, {
       commentId: comment.id,
       eventId: comment.event_id,
       reporterId: String(user.id || user.user_id),

@@ -7,11 +7,20 @@ import assert from 'node:assert/strict';
 
 const Buffer: any = (globalThis as any).Buffer;
 import { getDb } from '../src/lib/db';
-import { columns } from '../src/pages/invite/_check';
 
 export async function db(): Promise<any> {
-  const raw: any = await Promise.resolve(getDb());
+  const raw: any = await getDb();
   return raw?.db ?? raw;
+}
+
+/** Працює і з синхронними, і з асинхронними statement-ами. */
+async function columns(d: any, table: string): Promise<string[]> {
+  try {
+    const rows: any[] = await d.prepare(`PRAGMA table_info(${table})`).all();
+    return rows.map((row) => String(row.name).toLowerCase());
+  } catch {
+    return [];
+  }
 }
 
 export function makeCtx(options: {
@@ -50,17 +59,17 @@ export function makeCtx(options: {
 }
 
 /** Вставляє рядок, відбираючи лише колонки, що є у фактичній схемі. */
-export function insertRow(d: any, table: string, values: Record<string, any>): void {
-  const existing = new Set(columns(d, table));
+export async function insertRow(d: any, table: string, values: Record<string, any>): Promise<void> {
+  const existing = new Set(await columns(d, table));
   const entries = Object.entries(values).filter(([key]) => existing.has(key.toLowerCase()));
   const names = entries.map(([key]) => key);
-  d.prepare(`INSERT INTO ${table} (${names.join(', ')}) VALUES (${names.map(() => '?').join(', ')})`)
+  await d.prepare(`INSERT INTO ${table} (${names.join(', ')}) VALUES (${names.map(() => '?').join(', ')})`)
     .run(...entries.map(([, value]) => value));
 }
 
-export function createUser(d: any, name = 'Тестовий користувач'): { id: string; name: string } {
+export async function createUser(d: any, name = 'Тестовий користувач'): Promise<{ id: string; name: string }> {
   const id = randomUUID();
-  insertRow(d, 'users', {
+  await insertRow(d, 'users', {
     id,
     email: `${id}@example.test`,
     name,
@@ -70,9 +79,9 @@ export function createUser(d: any, name = 'Тестовий користувач
   return { id, name };
 }
 
-export function createSession(d: any, userId: string): string {
+export async function createSession(d: any, userId: string): Promise<string> {
   const token = randomBytes(32).toString('hex');
-  insertRow(d, 'sessions', {
+  await insertRow(d, 'sessions', {
     token_hash: createHash('sha256').update(token).digest('hex'),
     token,
     user_id: userId,
@@ -82,10 +91,10 @@ export function createSession(d: any, userId: string): string {
   return token;
 }
 
-export function createEvent(d: any, authorId: string, visibility: 'public' | 'private' = 'public'): { id: string; token: string } {
+export async function createEvent(d: any, authorId: string, visibility: 'public' | 'private' = 'public'): Promise<{ id: string; token: string }> {
   const id = randomUUID();
   const token = randomBytes(32).toString('hex');
-  insertRow(d, 'events', {
+  await insertRow(d, 'events', {
     id,
     author_id: authorId,
     title: 'Тестова подія',
@@ -100,9 +109,9 @@ export function createEvent(d: any, authorId: string, visibility: 'public' | 'pr
   return { id, token };
 }
 
-export function createComment(d: any, eventId: string, authorId: string | null, name = 'Автор'): string {
+export async function createComment(d: any, eventId: string, authorId: string | null, name = 'Автор'): Promise<string> {
   const id = randomUUID();
-  insertRow(d, 'comments', {
+  await insertRow(d, 'comments', {
     id,
     event_id: eventId,
     author_id: authorId,
@@ -113,25 +122,25 @@ export function createComment(d: any, eventId: string, authorId: string | null, 
   return id;
 }
 
-export function createRsvp(d: any, eventId: string, userId: string): void {
-  insertRow(d, 'rsvp', {
+export async function createRsvp(d: any, eventId: string, userId: string): Promise<void> {
+  await insertRow(d, 'rsvp', {
     event_id: eventId,
     user_id: userId,
     created_at: new Date().toISOString()
   });
 }
 
-export function cleanup(d: any, ids: { users?: string[]; events?: string[]; comments?: string[] }): void {
-  const safe = (sql: string, ...args: any[]) => { try { d.prepare(sql).run(...args); } catch { /* вже видалено каскадом */ } };
-  for (const eventId of ids.events ?? []) safe('DELETE FROM reports WHERE comment_id IN (SELECT id FROM comments WHERE event_id = ?)', eventId);
-  for (const commentId of ids.comments ?? []) safe('DELETE FROM reports WHERE comment_id = ?', commentId);
-  for (const eventId of ids.events ?? []) safe('DELETE FROM events WHERE id = ?', eventId);
+export async function cleanup(d: any, ids: { users?: string[]; events?: string[]; comments?: string[] }): Promise<void> {
+  const safe = async (sql: string, ...args: any[]) => { try { await d.prepare(sql).run(...args); } catch { /* вже видалено каскадом */ } };
+  for (const eventId of ids.events ?? []) await safe('DELETE FROM reports WHERE comment_id IN (SELECT id FROM comments WHERE event_id = ?)', eventId);
+  for (const commentId of ids.comments ?? []) await safe('DELETE FROM reports WHERE comment_id = ?', commentId);
+  for (const eventId of ids.events ?? []) await safe('DELETE FROM events WHERE id = ?', eventId);
   for (const userId of ids.users ?? []) {
-    safe('DELETE FROM sessions WHERE user_id = ?', userId);
-    safe('DELETE FROM rsvp WHERE user_id = ?', userId);
-    safe('DELETE FROM reports WHERE reporter_id = ?', userId);
-    safe('DELETE FROM idempotencykey WHERE user_id = ?', userId);
-    safe('DELETE FROM users WHERE id = ?', userId);
+    await safe('DELETE FROM sessions WHERE user_id = ?', userId);
+    await safe('DELETE FROM rsvp WHERE user_id = ?', userId);
+    await safe('DELETE FROM reports WHERE reporter_id = ?', userId);
+    await safe('DELETE FROM idempotencykey WHERE user_id = ?', userId);
+    await safe('DELETE FROM users WHERE id = ?', userId);
   }
 }
 
@@ -141,12 +150,12 @@ import { POST as deleteProfile } from '../src/pages/api/profile/delete';
 
 test('зміна імені: 303, нове ім’я в БД і в знімках коментарів', async (t: any) => {
   const d = await db();
-  const user = createUser(d, 'Старе Ім’я');
-  const session = createSession(d, user.id);
-  const other = createUser(d);
-  const event = createEvent(d, other.id);
-  const commentId = createComment(d, event.id, user.id, 'Старе Ім’я');
-  t.after(() => cleanup(d, { users: [user.id, other.id], events: [event.id], comments: [commentId] }));
+  const user = await createUser(d, 'Старе Ім’я');
+  const session = await createSession(d, user.id);
+  const other = await createUser(d);
+  const event = await createEvent(d, other.id);
+  const commentId = await createComment(d, event.id, user.id, 'Старе Ім’я');
+  t.after(async () => { await cleanup(d, { users: [user.id, other.id], events: [event.id], comments: [commentId] }); });
 
   const ctx = makeCtx({
     method: 'POST',
@@ -158,9 +167,9 @@ test('зміна імені: 303, нове ім’я в БД і в знімка�
   assert.equal(response.status, 303);
   assert.equal(response.headers.get('location'), '/profile');
 
-  const row = d.prepare('SELECT name FROM users WHERE id = ?').get(user.id) as any;
+  const row: any = await d.prepare('SELECT name FROM users WHERE id = ?').get(user.id);
   assert.equal(row.name, 'Нове Ім’я');
-  const comment = d.prepare('SELECT author_name_snapshot FROM comments WHERE id = ?').get(commentId) as any;
+  const comment: any = await d.prepare('SELECT author_name_snapshot FROM comments WHERE id = ?').get(commentId);
   if (comment && 'author_name_snapshot' in comment) assert.equal(comment.author_name_snapshot, 'Нове Ім’я');
 
   const invalid = await updateProfile(makeCtx({
@@ -175,21 +184,21 @@ test('зміна імені: 303, нове ім’я в БД і в знімка�
 
 test('видалення акаунта: сесія мертва, події/записи зникли, коментар знеособлено', async (t: any) => {
   const d = await db();
-  const user = createUser(d, 'Автор');
-  const other = createUser(d, 'Інший');
-  const guest = createUser(d, 'Гість');
-  const session = createSession(d, user.id);
-  const foreignEvent = createEvent(d, other.id);
-  const ownEvent = createEvent(d, user.id);
-  const ownComment = createComment(d, foreignEvent.id, user.id, 'Автор');
-  const guestComment = createComment(d, ownEvent.id, guest.id, 'Гість');
-  createRsvp(d, ownEvent.id, guest.id);
-  createRsvp(d, foreignEvent.id, user.id);
-  t.after(() => cleanup(d, {
+  const user = await createUser(d, 'Автор');
+  const other = await createUser(d, 'Інший');
+  const guest = await createUser(d, 'Гість');
+  const session = await createSession(d, user.id);
+  const foreignEvent = await createEvent(d, other.id);
+  const ownEvent = await createEvent(d, user.id);
+  const ownComment = await createComment(d, foreignEvent.id, user.id, 'Автор');
+  const guestComment = await createComment(d, ownEvent.id, guest.id, 'Гість');
+  await createRsvp(d, ownEvent.id, guest.id);
+  await createRsvp(d, foreignEvent.id, user.id);
+  t.after(async () => { await cleanup(d, {
     users: [user.id, other.id, guest.id],
     events: [foreignEvent.id],
     comments: [ownComment]
-  }));
+  }); });
 
   const response = await deleteProfile(makeCtx({
     method: 'POST', cookies: { session }, body: '{}', url: 'http://localhost/api/profile/delete'
@@ -197,13 +206,13 @@ test('видалення акаунта: сесія мертва, події/з�
   assert.equal(response.status, 303);
   assert.equal(response.headers.get('location'), '/');
 
-  assert.equal(d.prepare('SELECT id FROM users WHERE id = ?').get(user.id), undefined, 'користувача видалено');
-  assert.equal(d.prepare('SELECT id FROM users WHERE id = ?').get(other.id)?.id, other.id, 'інші акаунти лишилися');
-  assert.equal(d.prepare('SELECT id FROM events WHERE id = ? OR author_id = ?').get(ownEvent.id, user.id), undefined, 'події автора видалено');
-  assert.equal(d.prepare('SELECT event_id FROM rsvp WHERE user_id = ? OR event_id = ?').get(user.id, ownEvent.id), undefined, 'записи видалено');
-  assert.equal(d.prepare('SELECT id FROM comments WHERE id = ?').get(guestComment), undefined, 'коментарі на видаленій події каскадно зникли');
+  assert.equal(await d.prepare('SELECT id FROM users WHERE id = ?').get(user.id), undefined, 'користувача видалено');
+  assert.equal((await d.prepare('SELECT id FROM users WHERE id = ?').get(other.id))?.id, other.id, 'інші акаунти лишилися');
+  assert.equal(await d.prepare('SELECT id FROM events WHERE id = ? OR author_id = ?').get(ownEvent.id, user.id), undefined, 'події автора видалено');
+  assert.equal(await d.prepare('SELECT event_id FROM rsvp WHERE user_id = ? OR event_id = ?').get(user.id, ownEvent.id), undefined, 'записи видалено');
+  assert.equal(await d.prepare('SELECT id FROM comments WHERE id = ?').get(guestComment), undefined, 'коментарі на видаленій події каскадно зникли');
 
-  const anonymized = d.prepare('SELECT author_id, author_name_snapshot, body FROM comments WHERE id = ?').get(ownComment) as any;
+  const anonymized: any = await d.prepare('SELECT author_id, author_name_snapshot, body FROM comments WHERE id = ?').get(ownComment);
   assert.equal(anonymized?.author_id, null, 'автор знеособлений');
   if (anonymized && 'author_name_snapshot' in anonymized) assert.equal(anonymized.author_name_snapshot, 'Знайомець');
   assert.equal(anonymized?.body, 'Тестовий коментар');

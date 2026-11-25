@@ -2,7 +2,7 @@
 
 Спрощений Meetup: користувачі створюють події з обмеженою кількістю місць, інші на них записуються. Публічні/приватні події, обкладинки, пошук, коментарі, запрошення, профіль.
 
-Стек: **Astro 7 (SSR, `@astrojs/node`, standalone) + React 19 + Tailwind 4 + shadcn/ui + React Bits** (registry `@reactbits`). Дані — SQLite (WAL), обкладинки — WebP BLOB у БД.
+Стек: **Astro 7 (SSR на Cloudflare Workers через `@astrojs/cloudflare`) + React 19 + Tailwind 4 + shadcn/ui + React Bits** (registry `@reactbits`). Дані — D1 (SQLite сумісний), обкладинки — BLOB у D1.
 
 ## Запуск
 
@@ -11,19 +11,39 @@
 ```bash
 npm install
 cp .env.example .env
-# відредагуй .env: обов'язково задай SESSION_SECRET (openssl rand -hex 32)
-npm run dev          # http://localhost:4321
+printf 'SESSION_SECRET=%s\n' "$(openssl rand -hex 32)" > .dev.vars
+npm run dev          # http://localhost:4321, локальний workerd + локальна D1
 ```
 
-Продакшен:
+Продакшен (Cloudflare Workers Free):
 
 ```bash
 npm ci
 npm run build
-HOST=0.0.0.0 PORT=4321 node ./dist/server/entry.mjs
+npx wrangler d1 migrations apply tusivka --local
+npx wrangler d1 migrations apply tusivka --remote
+npx wrangler secret put SESSION_SECRET
+npx wrangler deploy
 ```
 
-Або `npm run preview` для локальної перевірки зібраної версії.
+Працює на https://tusivka.byndevav.workers.dev. D1 Free: 5 млн read/день,
+100 тис. write/день, 5 ГБ. D1 обмежує рядок/BLOB 2 МБ, тому обкладинки — до
+1.5 МБ і зберігаються оригінальними байтами (без `sharp`/R2).
+
+### Швидкість
+
+Незалежні D1-читання на сторінці події йдуть паралельно; схема бази зафіксована
+в коді й не інтроспегується через `PRAGMA` на кожен запит. Обкладинки читаються
+окремим мінімальним запитом, мають ETag і кешуються на edge тільки для публічних
+подій (приватні — `private, no-store`).
+
+```bash
+BASE=https://tusivka.byndevav.workers.dev bash scripts/perf-check.sh
+```
+
+Пороги: головна < 400 мс, подія < 800 мс, обкладинка < 500 мс. Скрипт додає
+cache-buster, бо інакше Cloudflare віддає стару закешовану відповідь і ховає
+реальну зміну часу.
 
 ## Змінні середовища
 
@@ -34,7 +54,7 @@ HOST=0.0.0.0 PORT=4321 node ./dist/server/entry.mjs
 | `SESSION_COOKIE_NAME` | `session` | Ім'я cookie |
 | `SESSION_TTL_DAYS` | `30` | Термін життя сесії |
 | `SECURE_COOKIES` | `false` | `true` тільки на HTTPS |
-| `MAX_UPLOAD_BYTES` | `10485760` | Ліміт обкладинки (10 MiB) |
+| `MAX_UPLOAD_BYTES` | `10485760` | Ліміт multipart; Worker додатково обмежує обкладинку 1.5 МБ |
 | `MAX_LOGIN_ATTEMPTS` / `LOGIN_WINDOW_MS` | `10` / `60000` | Rate-limit логіну |
 | `MAX_EVENT_YEARS` | `2` | Максимальний горизонт дати події |
 | `MODERATOR_EMAILS` | `arsen@tusivka.local` | Email-и модераторів через кому; регістр не враховується |
@@ -47,13 +67,28 @@ HOST=0.0.0.0 PORT=4321 node ./dist/server/entry.mjs
 npm test          # 32 автотести (node:test)
 npx astro check   # перевірка типів; має бути 0 errors
 npm run build     # продакшен-білд
+bash scripts/perf-check.sh  # заміри часу відповіді продових маршрутів
 ```
+
+## CI/CD
+
+- `.github/workflows/ci.yml` — на push у `main`/`refactor/cloudflare-workers-d1` і на PR до `main`: `npm ci`, 32 тести, `astro check`, білд.
+- `.github/workflows/deploy.yml` — на push у `main` і вручну: білд, `wrangler d1 migrations apply tusivka --remote`, `wrangler deploy`.
+- `.github/dependabot.yml` — щотижневі PR на оновлення npm-залежностей і GitHub Actions (група minor/patch разом).
+
+Обов'язкові секрети репозиторію (Settings → Secrets and variables → Actions):
+
+- `CLOUDFLARE_API_TOKEN` — токен із `Workers Scripts: Edit`, `D1: Edit`, `Account Settings: Read`.
+- `CLOUDFLARE_ACCOUNT_ID` — ID акаунта Cloudflare.
+
+`SESSION_SECRET` зберігається безпосередньо у Worker через `wrangler secret put` і в Actions не дублюється.
 
 ## Структура
 
 - `specs/001-tusivka-events/`, `specs/002-moderation-reports/` — Spec Kit: `spec.md`, `plan.md`, `tasks.md`, `data-model.md`, `contracts/`, `checklists/`
 - `.specify/memory/constitution.md` — принципи проєкту
-- `src/lib/` — DB, auth, валідація, ідемпотентність, moderation, зображення, час, події
+- `src/lib/` — async D1-фасад, auth, валідація, ідемпотентність, moderation, зображення, час, події
+- `migrations/0001_init.sql` — схема D1; `wrangler.jsonc` — binding `DB` і змінні
 - `src/pages/api/` — REST-екшени (події, RSVP, коментарі, профіль, скарги)
 - `src/pages/events/`, `src/pages/invite/` — сторінки подій і запрошень
 - `src/components/` — React-острівці (форми) і Astro-компоненти

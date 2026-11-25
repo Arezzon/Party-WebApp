@@ -6,7 +6,7 @@ import { readPayload } from '../../events.ts';
 export const prerender = false;
 
 export const POST: APIRoute = async (context) => {
-  const user = requireUser(context);
+  const user = await requireUser(context);
   if (!user) return Response.json({ error: 'Потрібен вхід у акаунт.' }, { status: 401 });
 
   const id = context.params.id;

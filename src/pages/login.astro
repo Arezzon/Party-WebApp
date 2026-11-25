@@ -39,14 +39,14 @@ if (Astro.request.method === 'POST') {
       Astro.response.headers.set('Retry-After', String(limit.retryAfter));
     } else {
       const parsed = loginSchema.safeParse({ email, password });
-      const user = parsed.success ? authenticateUser(parsed.data.email, password) : null;
+      const user = parsed.success ? await authenticateUser(parsed.data.email, password) : null;
       if (!user) {
         recordFailedLogin(limitKey);
         error = 'Невірний email або пароль.';
         Astro.response.status = 400;
       } else {
         clearLoginFailures(limitKey);
-        const session = createSession(user.id);
+        const session = await createSession(user.id);
         setSessionCookie(Astro.cookies, session.token);
         const destination = next.startsWith('/') && !next.startsWith('//') ? next : '/';
         return Astro.redirect(destination, 303);

@@ -12,7 +12,7 @@ export const POST: APIRoute = async (ctx) => {
   if (!eventId) return friendly(404, 'Подію не знайдено');
 
   const db = await database();
-  const event = db
+  const event = await db
     .prepare('SELECT id, visibility, invite_token, author_id FROM events WHERE id = ?')
     .get(eventId) as any;
   if (!event) return friendly(404, 'Подію не знайдено');
@@ -21,9 +21,7 @@ export const POST: APIRoute = async (ctx) => {
   }
 
   const userId = String(user.id || user.user_id);
-  const remove = () => db.prepare('DELETE FROM rsvp WHERE event_id = ? AND user_id = ?').run(eventId, userId);
-  if (typeof db.transaction === 'function') db.transaction(remove)();
-  else remove();
+  await db.prepare('DELETE FROM rsvp WHERE event_id = ? AND user_id = ?').run(eventId, userId);
 
   return redirectTo(ctx as any, `/events/${encodeURIComponent(eventId)}`, 303);
 };

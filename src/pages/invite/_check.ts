@@ -21,15 +21,14 @@ export const SESSION_COOKIE_NAMES = ['session', 'session_token', 'auth_session',
 
 export class BadRequest extends Error {}
 
-/** getDb() може бути синхронним або асинхронним — підтримуємо обидва варіанти. */
+/** Асинхронна база: кожен вираз готується й виконується з await. */
 export async function database(): Promise<any> {
-  const raw: any = await Promise.resolve(getDb());
-  return raw?.db ?? raw;
+  return await getDb();
 }
 
-export function columns(db: any, table: string): string[] {
+export async function columns(db: any, table: string): Promise<string[]> {
   try {
-    return (db.prepare(`PRAGMA table_info(${table})`).all() as any[]).map((row) => String(row.name).toLowerCase());
+    return ((await db.prepare(`PRAGMA table_info(${table})`).all()) as any[]).map((row) => String(row.name).toLowerCase());
   } catch {
     return [];
   }
@@ -67,7 +66,7 @@ export async function currentUser(ctx: AnyCtx): Promise<any | null> {
 
   try {
     const db = await database();
-    const cols = columns(db, 'sessions');
+    const cols = await columns(db, 'sessions');
     if (!cols.length) return null;
     const clauses: string[] = [];
     const args: string[] = [];
@@ -79,12 +78,12 @@ export async function currentUser(ctx: AnyCtx): Promise<any | null> {
       args.push(token);
     }
     if (!clauses.length) return null;
-    const session = db.prepare(`SELECT * FROM sessions WHERE ${clauses.join(' OR ')} LIMIT 1`).get(...args) as any;
+    const session = (await db.prepare(`SELECT * FROM sessions WHERE ${clauses.join(' OR ')} LIMIT 1`).get(...args)) as any;
     if (!session) return null;
     if (session.expires_at && Date.parse(String(session.expires_at)) < Date.now()) return null;
     const userId = session.user_id || session.userId;
     if (!userId) return null;
-    return (db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as any) ?? null;
+    return ((await db.prepare('SELECT * FROM users WHERE id = ?').get(userId)) as any) ?? null;
   } catch {
     return null;
   }

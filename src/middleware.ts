@@ -3,6 +3,8 @@
  * invite cookie exposure and security headers on every response.
  */
 import { defineMiddleware } from 'astro:middleware';
+// @ts-ignore -- virtual module only exists in the Workers build
+import { bindCloudflareEnv } from './lib/cf-env';
 import {
   LOGIN_LIMIT_MESSAGE,
   checkOrigin,
@@ -65,6 +67,7 @@ function readInvites(cookies: any): Record<string, string> {
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
+  bindCloudflareEnv();
   const request = context.request;
 
   if (isMutation(request)) {
@@ -80,7 +83,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const token = readSessionToken(context);
   context.locals.sessionToken = token;
-  context.locals.user = token ? requireUser(context) : null;
+  context.locals.user = token ? await requireUser(context) : null;
   context.locals.invites = readInvites(context.cookies);
 
   const response = await next();

@@ -8,26 +8,33 @@ import { canViewEventFromRequest, getAttendees, getEvent, rsvpCount } from '../.
 import { formatKyiv } from '../../../lib/timezone.ts';
 
 const id = Astro.params.id ?? '';
-const event = getEvent(id);
+const db = await getDb();
+const event = await getEvent(id);
 if (!event || !canViewEventFromRequest(event, Astro.cookies, Astro.url)) {
   return new Response('Подію не знайдено.', { status: 404 });
 }
 
-const user = requireUser(Astro);
+const user = await requireUser(Astro);
 const isAuthor = Boolean(user && user.id === event.authorId);
-const left = Math.max(0, event.places - rsvpCount(id));
+
+// These reads are independent — run them concurrently instead of paying four
+// sequential D1 round trips on every event page.
+const [taken, commentRows, attendeeRows] = await Promise.all([
+  rsvpCount(id),
+  db
+    .prepare('SELECT id, body, author_id, author_name_snapshot, created_at FROM comments WHERE event_id = ? ORDER BY created_at ASC, id ASC')
+    .all(id) as Promise<Array<{ id: string; body: string; author_id: string | null; author_name_snapshot: string; created_at: string }>>,
+  getAttendees(id)
+]);
+
+const left = Math.max(0, event.places - taken);
 
 let going = false;
 if (user) {
-  going = Boolean(getDb().prepare('SELECT 1 FROM RSVP WHERE event_id = ? AND user_id = ?').get(id, user.id));
+  going = Boolean(await db.prepare('SELECT 1 FROM RSVP WHERE event_id = ? AND user_id = ?').get(id, user.id));
 }
 
-const rawDb: any = getDb();
-const db: any = rawDb?.db ?? rawDb;
-const commentRows = (db
-  .prepare('SELECT id, body, author_id, author_name_snapshot, created_at FROM comments WHERE event_id = ? ORDER BY created_at ASC, id ASC')
-  .all(id) ?? []) as Array<{ id: string; body: string; author_id: string | null; author_name_snapshot: string; created_at: string }>;
-const comments = commentRows.map((row) => ({
+const comments = (commentRows ?? []).map((row) => ({
   id: String(row.id),
   body: String(row.body ?? ''),
   authorId: String(row.author_id ?? ''),
@@ -38,6 +45,7 @@ const comments = commentRows.map((row) => ({
 const idempotencyKey = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
   ? crypto.randomUUID()
   : `${Date.now()}`;
+const attendees = attendeeRows.map((person: { name: string }) => String(person.name));
 ---
 
 <Layout title={`${event.title} — Тусовка`}>
@@ -54,7 +62,7 @@ const idempotencyKey = typeof crypto !== 'undefined' && typeof crypto.randomUUID
     isAuthor={isAuthor}
     going={going}
     idempotencyKey={idempotencyKey}
-    attendees={getAttendees(id).map((person: { name: string }) => String(person.name))}
+    attendees={attendees}
     comments={comments}
     userId={user ? String(user.id) : ''}
   />

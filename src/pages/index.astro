@@ -8,11 +8,10 @@ import EventFilters from '../components/site/EventFilters.astro';
 const q = (Astro.url.searchParams.get('q') ?? '').trim();
 const needle = q.toLocaleLowerCase('uk-UA');
 
-const rawDb: any = getDb();
-const db: any = rawDb?.db ?? rawDb;
+const db = await getDb();
 const now = new Date().toISOString();
 
-const rows = db
+const rows = await db
   .prepare(
     `SELECT e.id, e.title, e.starts_at, e.places,
             (SELECT COUNT(*) FROM RSVP r WHERE r.event_id = e.id) AS taken,

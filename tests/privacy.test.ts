@@ -7,11 +7,20 @@ import assert from 'node:assert/strict';
 
 const Buffer: any = (globalThis as any).Buffer;
 import { getDb } from '../src/lib/db';
-import { columns } from '../src/pages/invite/_check';
 
 export async function db(): Promise<any> {
-  const raw: any = await Promise.resolve(getDb());
+  const raw: any = await getDb();
   return raw?.db ?? raw;
+}
+
+/** Працює і з синхронними, і з асинхронними statement-ами. */
+async function columns(d: any, table: string): Promise<string[]> {
+  try {
+    const rows: any[] = await d.prepare(`PRAGMA table_info(${table})`).all();
+    return rows.map((row) => String(row.name).toLowerCase());
+  } catch {
+    return [];
+  }
 }
 
 export function makeCtx(options: {
@@ -50,17 +59,17 @@ export function makeCtx(options: {
 }
 
 /** Вставляє рядок, відбираючи лише колонки, що є у фактичній схемі. */
-export function insertRow(d: any, table: string, values: Record<string, any>): void {
-  const existing = new Set(columns(d, table));
+export async function insertRow(d: any, table: string, values: Record<string, any>): Promise<void> {
+  const existing = new Set(await columns(d, table));
   const entries = Object.entries(values).filter(([key]) => existing.has(key.toLowerCase()));
   const names = entries.map(([key]) => key);
-  d.prepare(`INSERT INTO ${table} (${names.join(', ')}) VALUES (${names.map(() => '?').join(', ')})`)
+  await d.prepare(`INSERT INTO ${table} (${names.join(', ')}) VALUES (${names.map(() => '?').join(', ')})`)
     .run(...entries.map(([, value]) => value));
 }
 
-export function createUser(d: any, name = 'Тестовий користувач'): { id: string; name: string } {
+export async function createUser(d: any, name = 'Тестовий користувач'): Promise<{ id: string; name: string }> {
   const id = randomUUID();
-  insertRow(d, 'users', {
+  await insertRow(d, 'users', {
     id,
     email: `${id}@example.test`,
     name,
@@ -70,9 +79,9 @@ export function createUser(d: any, name = 'Тестовий користувач
   return { id, name };
 }
 
-export function createSession(d: any, userId: string): string {
+export async function createSession(d: any, userId: string): Promise<string> {
   const token = randomBytes(32).toString('hex');
-  insertRow(d, 'sessions', {
+  await insertRow(d, 'sessions', {
     token_hash: createHash('sha256').update(token).digest('hex'),
     token,
     user_id: userId,
@@ -82,10 +91,10 @@ export function createSession(d: any, userId: string): string {
   return token;
 }
 
-export function createEvent(d: any, authorId: string, visibility: 'public' | 'private' = 'public'): { id: string; token: string } {
+export async function createEvent(d: any, authorId: string, visibility: 'public' | 'private' = 'public'): Promise<{ id: string; token: string }> {
   const id = randomUUID();
   const token = randomBytes(32).toString('hex');
-  insertRow(d, 'events', {
+  await insertRow(d, 'events', {
     id,
     author_id: authorId,
     title: 'Тестова подія',
@@ -100,9 +109,9 @@ export function createEvent(d: any, authorId: string, visibility: 'public' | 'pr
   return { id, token };
 }
 
-export function createComment(d: any, eventId: string, authorId: string | null, name = 'Автор'): string {
+export async function createComment(d: any, eventId: string, authorId: string | null, name = 'Автор'): Promise<string> {
   const id = randomUUID();
-  insertRow(d, 'comments', {
+  await insertRow(d, 'comments', {
     id,
     event_id: eventId,
     author_id: authorId,
@@ -113,25 +122,25 @@ export function createComment(d: any, eventId: string, authorId: string | null, 
   return id;
 }
 
-export function createRsvp(d: any, eventId: string, userId: string): void {
-  insertRow(d, 'rsvp', {
+export async function createRsvp(d: any, eventId: string, userId: string): Promise<void> {
+  await insertRow(d, 'rsvp', {
     event_id: eventId,
     user_id: userId,
     created_at: new Date().toISOString()
   });
 }
 
-export function cleanup(d: any, ids: { users?: string[]; events?: string[]; comments?: string[] }): void {
-  const safe = (sql: string, ...args: any[]) => { try { d.prepare(sql).run(...args); } catch { /* вже видалено каскадом */ } };
-  for (const eventId of ids.events ?? []) safe('DELETE FROM reports WHERE comment_id IN (SELECT id FROM comments WHERE event_id = ?)', eventId);
-  for (const commentId of ids.comments ?? []) safe('DELETE FROM reports WHERE comment_id = ?', commentId);
-  for (const eventId of ids.events ?? []) safe('DELETE FROM events WHERE id = ?', eventId);
+export async function cleanup(d: any, ids: { users?: string[]; events?: string[]; comments?: string[] }): Promise<void> {
+  const safe = async (sql: string, ...args: any[]) => { try { await d.prepare(sql).run(...args); } catch { /* вже видалено каскадом */ } };
+  for (const eventId of ids.events ?? []) await safe('DELETE FROM reports WHERE comment_id IN (SELECT id FROM comments WHERE event_id = ?)', eventId);
+  for (const commentId of ids.comments ?? []) await safe('DELETE FROM reports WHERE comment_id = ?', commentId);
+  for (const eventId of ids.events ?? []) await safe('DELETE FROM events WHERE id = ?', eventId);
   for (const userId of ids.users ?? []) {
-    safe('DELETE FROM sessions WHERE user_id = ?', userId);
-    safe('DELETE FROM rsvp WHERE user_id = ?', userId);
-    safe('DELETE FROM reports WHERE reporter_id = ?', userId);
-    safe('DELETE FROM idempotencykey WHERE user_id = ?', userId);
-    safe('DELETE FROM users WHERE id = ?', userId);
+    await safe('DELETE FROM sessions WHERE user_id = ?', userId);
+    await safe('DELETE FROM rsvp WHERE user_id = ?', userId);
+    await safe('DELETE FROM reports WHERE reporter_id = ?', userId);
+    await safe('DELETE FROM idempotencykey WHERE user_id = ?', userId);
+    await safe('DELETE FROM users WHERE id = ?', userId);
   }
 }
 
@@ -143,9 +152,9 @@ import { canViewEvent } from '../src/pages/invite/_check';
 
 test('інвайт з 32 байтів: cookie invite_<eventId> і 303 на подію', async (t: any) => {
   const d = await db();
-  const author = createUser(d);
-  const event = createEvent(d, author.id, 'private');
-  t.after(() => cleanup(d, { users: [author.id], events: [event.id] }));
+  const author = await createUser(d);
+  const event = await createEvent(d, author.id, 'private');
+  t.after(async () => { await cleanup(d, { users: [author.id], events: [event.id] }); });
 
   const missing = await inviteGet(makeCtx({ params: { token: 'not-a-token' } }) as any);
   assert.equal(missing.status, 404, 'короткий токен має дати 404');
@@ -165,12 +174,12 @@ test('інвайт з 32 байтів: cookie invite_<eventId> і 303 на по�
 
 test('приватна подія: запис і коментар без інвайту — 404, з інвайтом — працює', async (t: any) => {
   const d = await db();
-  const author = createUser(d);
-  const reporter = createUser(d);
-  const session = createSession(d, reporter.id);
-  const event = createEvent(d, author.id, 'private');
-  const commentId = createComment(d, event.id, author.id, 'Автор');
-  t.after(() => cleanup(d, { users: [author.id, reporter.id], events: [event.id], comments: [commentId] }));
+  const author = await createUser(d);
+  const reporter = await createUser(d);
+  const session = await createSession(d, reporter.id);
+  const event = await createEvent(d, author.id, 'private');
+  const commentId = await createComment(d, event.id, author.id, 'Автор');
+  t.after(async () => { await cleanup(d, { users: [author.id, reporter.id], events: [event.id], comments: [commentId] }); });
 
   const request = (cookies: Record<string, string>) => makeCtx({
     method: 'POST',
@@ -200,10 +209,11 @@ test('приватна подія: запис і коментар без інв�
 
 test('приватної події немає у публічному списку', async (t: any) => {
   const d = await db();
-  const author = createUser(d);
-  const event = createEvent(d, author.id, 'private');
-  t.after(() => cleanup(d, { users: [author.id], events: [event.id] }));
-  const publicIds = (d.prepare("SELECT id FROM events WHERE visibility = 'public' AND starts_at > ?")
-    .all(new Date().toISOString()) as any[]).map((row) => row.id);
+  const author = await createUser(d);
+  const event = await createEvent(d, author.id, 'private');
+  t.after(async () => { await cleanup(d, { users: [author.id], events: [event.id] }); });
+  const rows: any[] = await d.prepare("SELECT id FROM events WHERE visibility = 'public' AND starts_at > ?")
+    .all(new Date().toISOString());
+  const publicIds = rows.map((row) => row.id);
   assert.ok(!publicIds.includes(event.id), 'приватна подія не повинна потрапляти у видачу');
 });

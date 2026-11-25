@@ -11,9 +11,26 @@ let events: typeof import('../src/lib/events.ts');
 let auth: typeof import('../src/lib/auth.ts');
 let dbModule: typeof import('../src/lib/db.ts');
 
-/** Minimal valid 1×1 PNG. Filename and MIME are deliberately misleading in one test. */
+import { detectImageMime } from '../src/lib/validation';
+
+/** Minimal valid 1×1 PNG. Filename and MIME are deliberately misleading. */
 const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVQImWOwbvpm3fSNAUIBACy2Bs0ifrYRAAAAAElFTkSuQmCC';
 const pngBytes = Uint8Array.from(atob(PNG_BASE64), (char) => char.charCodeAt(0));
+
+/** Приймає і синхронний throw, і async reject (БД-виклики стали асинхронними). */
+async function fails(
+  fn: () => unknown | Promise<unknown>,
+  check?: (error: any) => boolean,
+  message = 'очікувалася помилка'
+): Promise<void> {
+  try {
+    await fn();
+  } catch (error) {
+    if (check && !check(error)) assert.fail(`${message}: неочікувана помилка ${String(error)}`);
+    return;
+  }
+  assert.fail(`${message}: помилки не було`);
+}
 
 function coverFile(): File {
   return new File([pngBytes], '../../../../tmp/pwned.png', { type: 'image/png' });
@@ -31,12 +48,12 @@ before(async () => {
   dbModule = await import('../src/lib/db.ts');
 });
 
-function author() {
+async function author() {
   return auth.registerUser({ email: `author-${Date.now()}-${Math.random()}@example.com`, password: 'password123', name: 'Автор' });
 }
 
-test('створення події: UUID, 32 байти інвайту, обкладинка WebP', async () => {
-  const user = author();
+test('створення події: UUID, 32 байти інвайту, обкладинка зберігається оригіналом', async () => {
+  const user = await author();
   const event = await events.createEvent({
     authorId: user.id,
     title: 'Тестова тусовка',
@@ -53,17 +70,31 @@ test('створення події: UUID, 32 байти інвайту, обк�
   assert.equal(event.places, 10);
   assert.ok(event.coverBlob);
   const bytes = new Uint8Array(event.coverBlob!);
-  assert.equal(String.fromCharCode(...bytes.slice(0, 4)), 'RIFF');
-  assert.equal(String.fromCharCode(...bytes.slice(8, 12)), 'WEBP');
+  // Workers не перекодуває: байти обкладинки зберігаються як є.
+  assert.deepEqual(Array.from(bytes.slice(0, pngBytes.length)), Array.from(pngBytes), 'PNG зберігається без змін');
+  assert.equal(detectImageMime(bytes), 'image/png');
+  assert.ok(
+    ['image/png', 'image/jpeg', 'image/webp'].includes(String(event.coverMime)),
+    'разом з обкладинкою має зберігатися безпечний MIME зображення'
+  );
 
-  const response = events.coverResponse(event);
+  const response = await events.coverResponse(event);
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get('content-type'), 'image/webp');
+  assert.equal(response.headers.get('content-type'), event.coverMime, 'Content-Type має відповідати збереженому MIME');
   assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.match(String(response.headers.get('cache-control')), /public/);
+
+  const etag = response.headers.get('etag');
+  assert.ok(etag, 'обкладинка має ETag для кешування');
+  const revalidated = await events.coverResponse(
+    event,
+    new Request('https://example.test/cover', { headers: { 'If-None-Match': etag! } })
+  );
+  assert.equal(revalidated.status, 304, 'If-None-Match має повертати 304 без тіла');
 });
 
 test('невалідні places (0, -1, 1.5, 7abc, 1e20) відхиляються зі статусом 400', async () => {
-  const user = author();
+  const user = await author();
   for (const places of [0, -1, 1.5, '7abc', '1e20', 10001]) {
     await assert.rejects(
       () => events.createEvent({
@@ -80,7 +111,7 @@ test('невалідні places (0, -1, 1.5, 7abc, 1e20) відхиляютьс�
 });
 
 test('порожня назва й дата 9999 відхиляються', async () => {
-  const user = author();
+  const user = await author();
   await assert.rejects(
     () => events.createEvent({ authorId: user.id, title: '   ', startsAt: future(), places: 3, cover: coverFile() }),
     (error: unknown) => (error as { status?: number }).status === 400
@@ -92,8 +123,8 @@ test('порожня назва й дата 9999 відхиляються', asyn
 });
 
 test('редагування й видалення чужої події дає 403', async () => {
-  const owner = author();
-  const stranger = author();
+  const owner = await author();
+  const stranger = await author();
   const event = await events.createEvent({
     authorId: owner.id,
     title: 'Чужа подія',
@@ -102,23 +133,23 @@ test('редагування й видалення чужої події дає 
     cover: coverFile()
   });
 
-  await assert.rejects(
+  await fails(
     () => events.updateEvent(event.id, stranger.id, { title: 'Взлом' }),
-    (error: unknown) => (error as { status?: number }).status === 403
+    (error) => error?.status === 403
   );
-  assert.throws(
+  await fails(
     () => events.deleteEvent(event.id, stranger.id),
-    (error: unknown) => (error as { status?: number }).status === 403
+    (error) => error?.status === 403
   );
-  assert.equal(events.getEvent(event.id)?.title, 'Чужа подія');
+  assert.equal((await events.getEvent(event.id))?.title, 'Чужа подія');
 
   const updated = await events.updateEvent(event.id, owner.id, { title: 'Нова назва' });
   assert.equal(updated.title, 'Нова назва');
 });
 
 test('зменшення місць нижче кількості записаних дає 400', async () => {
-  const owner = author();
-  const guest = author();
+  const owner = await author();
+  const guest = await author();
   const event = await events.createEvent({
     authorId: owner.id,
     title: 'Подія з учасником',
@@ -126,22 +157,22 @@ test('зменшення місць нижче кількості записан
     places: 2,
     cover: coverFile()
   });
-  dbModule.getDb()
-    .prepare('INSERT INTO RSVP (event_id, user_id, created_at) VALUES (?, ?, ?)')
+  const db = await dbModule.getDb();
+  await db.prepare('INSERT INTO RSVP (event_id, user_id, created_at) VALUES (?, ?, ?)')
     .run(event.id, guest.id, new Date().toISOString());
 
-  assert.equal(events.rsvpCount(event.id), 1);
+  assert.equal(await events.rsvpCount(event.id), 1);
   await assert.rejects(
     () => events.updateEvent(event.id, owner.id, { places: 0 }),
     (error: unknown) => (error as { status?: number }).status === 400
   );
   const ok = await events.updateEvent(event.id, owner.id, { places: 2 });
   assert.equal(ok.places, 2);
-  assert.equal(events.getAttendees(event.id).length, 1);
+  assert.equal((await events.getAttendees(event.id)).length, 1);
 });
 
 test('Idempotency-Key: повторний POST створює лише одну подію', async () => {
-  const user = author();
+  const user = await author();
   const key = crypto.randomUUID();
   const input = {
     authorId: user.id,
@@ -155,11 +186,11 @@ test('Idempotency-Key: повторний POST створює лише одну 
   const first = await events.createEvent(input);
   const second = await events.createEvent({ ...input, cover: coverFile() });
   assert.equal(second.id, first.id);
-  assert.equal(events.listUserEvents(user.id).length, 1);
+  assert.equal((await events.listUserEvents(user.id)).length, 1);
 });
 
 test('приватна подія недоступна без інвайту', async () => {
-  const user = author();
+  const user = await author();
   const event = await events.createEvent({
     authorId: user.id,
     title: 'Приватна подія',
@@ -168,8 +199,8 @@ test('приватна подія недоступна без інвайту', a
     visibility: 'private',
     cover: coverFile()
   });
-  assert.equal(events.canViewEvent(event, null), false);
-  assert.equal(events.canViewEvent(event, event.inviteToken), true);
-  assert.equal(events.listPublicEvents('приватна').length, 0);
-  assert.equal(events.listPublicEvents('тусовка').length >= 1, true);
+  assert.equal(await events.canViewEvent(event, null), false);
+  assert.equal(await events.canViewEvent(event, event.inviteToken), true);
+  assert.equal((await events.listPublicEvents('приватна')).length, 0);
+  assert.equal((await events.listPublicEvents('тусовка')).length >= 1, true);
 });

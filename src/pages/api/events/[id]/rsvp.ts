@@ -5,7 +5,6 @@ import { randomUUID } from 'node:crypto';
 import type { APIRoute } from 'astro';
 import {
   canViewEvent,
-  columns,
   currentUser,
   database,
   friendly,
@@ -16,13 +15,24 @@ import {
 /**
  * POST /api/events/:id/rsvp — «Іду».
  *
- * Гонка за останнє місце вирішується всередині однієї транзакції SQLite з
- * BEGIN IMMEDIATE: перевірка лічильника й INSERT відбуваються під виключним
- * write-lock, тому з 20 паралельних запитів успішним буде рівно один.
- * Унікальний індекс (event_id, user_id) і IdempotencyKey дають ідемпотентність.
+ * Гонка за останнє місце вирішується однією умовною INSERT ... SELECT ... WHERE:
+ * перевірка лічильника й вставка відбуваються в межах одного запису, тому
+ * з 20 паралельних запитів успішним буде рівно один. Результат перевіряється
+ * через meta.changes. Унікальний індекс (event_id, user_id) і IdempotencyKey
+ * дають ідемпотентність.
  */
 
 export type RsvpOutcome = { ok: boolean; status: number; message: string };
+
+/** Async-еквівалент columns() з invite/_check: всі методи БД тепер повертають Promise. */
+async function tableColumns(db: any, table: string): Promise<string[]> {
+  try {
+    const rows = (await db.prepare(`PRAGMA table_info(${table})`).all()) as any[];
+    return rows.map((row) => String(row.name).toLowerCase());
+  } catch {
+    return [];
+  }
+}
 
 function idemKey(request: Request | undefined, body: Record<string, any>): string | null {
   const fromHeader =
@@ -41,7 +51,7 @@ export async function registerRsvp(
 ): Promise<RsvpOutcome> {
   const db = await database();
 
-  const event = db
+  const event = await db
     .prepare(
       `SELECT id, starts_at, places, visibility, invite_token, author_id
          FROM events WHERE id = ?`
@@ -52,69 +62,66 @@ export async function registerRsvp(
     return { ok: false, status: 404, message: 'Подію не знайдено' };
   }
 
-  const idemCols = columns(db, 'idempotencykey');
+  const idemCols = await tableColumns(db, 'idempotencykey');
   const hasIdem = idemCols.includes('key') && idemCols.includes('user_id');
   const tableName = 'idempotencykey';
 
-  const run = (): RsvpOutcome => {
-    if (key && hasIdem) {
-      const replay = db
-        .prepare(`SELECT result_id FROM ${tableName} WHERE user_id = ? AND key = ? AND kind = 'rsvp'`)
-        .get(userId, key) as any;
-      if (replay) return { ok: true, status: 303, message: 'Ви вже записані' };
-    }
+  if (key && hasIdem) {
+    const replay = await db
+      .prepare(`SELECT result_id FROM ${tableName} WHERE user_id = ? AND key = ? AND kind = 'rsvp'`)
+      .get(userId, key) as any;
+    if (replay) return { ok: true, status: 303, message: 'Ви вже записані' };
+  }
 
-    const existing = db
+  const existing = await db
+    .prepare('SELECT 1 FROM rsvp WHERE event_id = ? AND user_id = ?')
+    .get(eventId, userId);
+  if (existing) return { ok: true, status: 303, message: 'Ви вже записані' };
+
+  if (event.starts_at && Date.parse(String(event.starts_at)) <= Date.now()) {
+    return { ok: false, status: 400, message: 'Реєстрацію завершено' };
+  }
+
+  const places = Number(event.places ?? 0);
+  const createdAt = new Date().toISOString();
+
+  // Атомарне захоплення місця: COUNT і INSERT в одному записі, під write-lock.
+  // При одночасних запитах перший вставляє рядок, решта бачать заповнені місця.
+  let claim: any;
+  try {
+    claim = await db.prepare(
+      `INSERT INTO rsvp (event_id, user_id, created_at)
+       SELECT ?, ?, ?
+        WHERE (SELECT COUNT(*) FROM rsvp WHERE event_id = ?) < ?`
+    ).run(eventId, userId, createdAt, eventId, places);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (/locked|busy|constraint/i.test(message)) {
+      return { ok: false, status: 400, message: 'Немає вільних місць' };
+    }
+    throw error;
+  }
+  const changes = Number(claim?.changes ?? claim?.meta?.changes ?? 0);
+  if (!changes) {
+    // Можливо, паралельний запит щойно записав саме цього користувача.
+    const nowExisting = await db
       .prepare('SELECT 1 FROM rsvp WHERE event_id = ? AND user_id = ?')
       .get(eventId, userId);
-    if (existing) return { ok: true, status: 303, message: 'Ви вже записані' };
+    if (nowExisting) return { ok: true, status: 303, message: 'Ви вже записані' };
+    return { ok: false, status: 400, message: 'Немає вільних місць' };
+  }
 
-    if (event.starts_at && Date.parse(String(event.starts_at)) <= Date.now()) {
-      return { ok: false, status: 400, message: 'Реєстрацію завершено' };
-    }
-
-    const row = db.prepare('SELECT COUNT(*) AS n FROM rsvp WHERE event_id = ?').get(eventId) as any;
-    const taken = Number(row?.n ?? 0);
-    const places = Number(event.places ?? 0);
-    if (taken >= places) {
-      return { ok: false, status: 400, message: 'Немає вільних місць' };
-    }
-
-    const result = db
-      .prepare('INSERT OR IGNORE INTO rsvp (event_id, user_id, created_at) VALUES (?, ?, ?)')
-      .run(eventId, userId, new Date().toISOString());
-    // Якщо паралельний процес встиг зайняти місце між COUNT і INSERT — повідомляємо відмову.
-    if (!result || Number(result.changes ?? 0) === 0) {
-      return { ok: false, status: 400, message: 'Немає вільних місць' };
-    }
-
-    if (key && hasIdem) {
-      try {
-        db.prepare(
-          `INSERT OR IGNORE INTO ${tableName} (key, user_id, kind, result_id, created_at)
-           VALUES (?, ?, 'rsvp', ?, ?)`
-        ).run(key, userId, eventId, new Date().toISOString());
-      } catch {
-        // запис ідемпотентності не повинен скасовувати вже створений RSVP
-      }
-    }
-    return { ok: true, status: 303, message: 'Ви записані на подію' };
-  };
-
-  if (typeof db.transaction === 'function') {
+  if (key && hasIdem) {
     try {
-      const tx = db.transaction(run);
-      return typeof tx.immediate === 'function' ? tx.immediate() : tx();
-    } catch (error) {
-      // Помилка блокування/конфлікту = місце зайняте іншим запитом.
-      const message = error instanceof Error ? error.message : '';
-      if (/locked|busy|constraint/i.test(message)) {
-        return { ok: false, status: 400, message: 'Немає вільних місць' };
-      }
-      throw error;
+      await db.prepare(
+        `INSERT OR IGNORE INTO ${tableName} (key, user_id, kind, result_id, created_at)
+         VALUES (?, ?, 'rsvp', ?, ?)`
+      ).run(key, userId, eventId, new Date().toISOString());
+    } catch {
+      // запис ідемпотентності не повинен скасовувати вже створений RSVP
     }
   }
-  return run();
+  return { ok: true, status: 303, message: 'Ви записані на подію' };
 }
 
 export const POST: APIRoute = async (ctx) => {

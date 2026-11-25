@@ -9,11 +9,21 @@ import { readFile } from 'node:fs/promises';
 
 const Buffer: any = (globalThis as any).Buffer;
 import { getDb } from '../src/lib/db';
-import { columns } from '../src/pages/invite/_check';
+import { detectImageMime } from '../src/lib/validation';
 
 export async function db(): Promise<any> {
-  const raw: any = await Promise.resolve(getDb());
+  const raw: any = await getDb();
   return raw?.db ?? raw;
+}
+
+/** Працює і з синхронними, і з асинхронними statement-ами. */
+async function columns(d: any, table: string): Promise<string[]> {
+  try {
+    const rows: any[] = await d.prepare(`PRAGMA table_info(${table})`).all();
+    return rows.map((row) => String(row.name).toLowerCase());
+  } catch {
+    return [];
+  }
 }
 
 export function makeCtx(options: {
@@ -52,17 +62,17 @@ export function makeCtx(options: {
 }
 
 /** Вставляє рядок, відбираючи лише колонки, що є у фактичній схемі. */
-export function insertRow(d: any, table: string, values: Record<string, any>): void {
-  const existing = new Set(columns(d, table));
+export async function insertRow(d: any, table: string, values: Record<string, any>): Promise<void> {
+  const existing = new Set(await columns(d, table));
   const entries = Object.entries(values).filter(([key]) => existing.has(key.toLowerCase()));
   const names = entries.map(([key]) => key);
-  d.prepare(`INSERT INTO ${table} (${names.join(', ')}) VALUES (${names.map(() => '?').join(', ')})`)
+  await d.prepare(`INSERT INTO ${table} (${names.join(', ')}) VALUES (${names.map(() => '?').join(', ')})`)
     .run(...entries.map(([, value]) => value));
 }
 
-export function createUser(d: any, name = 'Тестовий користувач'): { id: string; name: string } {
+export async function createUser(d: any, name = 'Тестовий користувач'): Promise<{ id: string; name: string }> {
   const id = randomUUID();
-  insertRow(d, 'users', {
+  await insertRow(d, 'users', {
     id,
     email: `${id}@example.test`,
     name,
@@ -72,9 +82,9 @@ export function createUser(d: any, name = 'Тестовий користувач
   return { id, name };
 }
 
-export function createSession(d: any, userId: string): string {
+export async function createSession(d: any, userId: string): Promise<string> {
   const token = randomBytes(32).toString('hex');
-  insertRow(d, 'sessions', {
+  await insertRow(d, 'sessions', {
     token_hash: createHash('sha256').update(token).digest('hex'),
     token,
     user_id: userId,
@@ -84,10 +94,10 @@ export function createSession(d: any, userId: string): string {
   return token;
 }
 
-export function createEvent(d: any, authorId: string, visibility: 'public' | 'private' = 'public'): { id: string; token: string } {
+export async function createEvent(d: any, authorId: string, visibility: 'public' | 'private' = 'public'): Promise<{ id: string; token: string }> {
   const id = randomUUID();
   const token = randomBytes(32).toString('hex');
-  insertRow(d, 'events', {
+  await insertRow(d, 'events', {
     id,
     author_id: authorId,
     title: 'Тестова подія',
@@ -102,9 +112,9 @@ export function createEvent(d: any, authorId: string, visibility: 'public' | 'pr
   return { id, token };
 }
 
-export function createComment(d: any, eventId: string, authorId: string | null, name = 'Автор'): string {
+export async function createComment(d: any, eventId: string, authorId: string | null, name = 'Автор'): Promise<string> {
   const id = randomUUID();
-  insertRow(d, 'comments', {
+  await insertRow(d, 'comments', {
     id,
     event_id: eventId,
     author_id: authorId,
@@ -115,25 +125,25 @@ export function createComment(d: any, eventId: string, authorId: string | null, 
   return id;
 }
 
-export function createRsvp(d: any, eventId: string, userId: string): void {
-  insertRow(d, 'rsvp', {
+export async function createRsvp(d: any, eventId: string, userId: string): Promise<void> {
+  await insertRow(d, 'rsvp', {
     event_id: eventId,
     user_id: userId,
     created_at: new Date().toISOString()
   });
 }
 
-export function cleanup(d: any, ids: { users?: string[]; events?: string[]; comments?: string[] }): void {
-  const safe = (sql: string, ...args: any[]) => { try { d.prepare(sql).run(...args); } catch { /* вже видалено каскадом */ } };
-  for (const eventId of ids.events ?? []) safe('DELETE FROM reports WHERE comment_id IN (SELECT id FROM comments WHERE event_id = ?)', eventId);
-  for (const commentId of ids.comments ?? []) safe('DELETE FROM reports WHERE comment_id = ?', commentId);
-  for (const eventId of ids.events ?? []) safe('DELETE FROM events WHERE id = ?', eventId);
+export async function cleanup(d: any, ids: { users?: string[]; events?: string[]; comments?: string[] }): Promise<void> {
+  const safe = async (sql: string, ...args: any[]) => { try { await d.prepare(sql).run(...args); } catch { /* вже видалено каскадом */ } };
+  for (const eventId of ids.events ?? []) await safe('DELETE FROM reports WHERE comment_id IN (SELECT id FROM comments WHERE event_id = ?)', eventId);
+  for (const commentId of ids.comments ?? []) await safe('DELETE FROM reports WHERE comment_id = ?', commentId);
+  for (const eventId of ids.events ?? []) await safe('DELETE FROM events WHERE id = ?', eventId);
   for (const userId of ids.users ?? []) {
-    safe('DELETE FROM sessions WHERE user_id = ?', userId);
-    safe('DELETE FROM rsvp WHERE user_id = ?', userId);
-    safe('DELETE FROM reports WHERE reporter_id = ?', userId);
-    safe('DELETE FROM idempotencykey WHERE user_id = ?', userId);
-    safe('DELETE FROM users WHERE id = ?', userId);
+    await safe('DELETE FROM sessions WHERE user_id = ?', userId);
+    await safe('DELETE FROM rsvp WHERE user_id = ?', userId);
+    await safe('DELETE FROM reports WHERE reporter_id = ?', userId);
+    await safe('DELETE FROM idempotencykey WHERE user_id = ?', userId);
+    await safe('DELETE FROM users WHERE id = ?', userId);
   }
 }
 
@@ -144,9 +154,9 @@ import { withIdempotency } from '../src/lib/idempotency';
 
 test('MALFORMED JSON і порожні поля — дружні 400/404 без стектрейсів', async (t: any) => {
   const d = await db();
-  const user = createUser(d);
-  const session = createSession(d, user.id);
-  t.after(() => cleanup(d, { users: [user.id] }));
+  const user = await createUser(d);
+  const session = await createSession(d, user.id);
+  t.after(async () => { await cleanup(d, { users: [user.id] }); });
 
   const badJson = await updateProfile(makeCtx({
     method: 'POST', cookies: { session }, body: '{not json', url: 'http://localhost/api/profile'
@@ -169,8 +179,8 @@ test('MALFORMED JSON і порожні поля — дружні 400/404 без 
 
 test('дві однакові POST з одним Idempotency-Key створюють одну сутність', async (t: any) => {
   const d = await db();
-  const user = createUser(d);
-  t.after(() => cleanup(d, { users: [user.id] }));
+  const user = await createUser(d);
+  t.after(async () => { await cleanup(d, { users: [user.id] }); });
 
   const key = randomUUID();
   let created = 0;
@@ -183,36 +193,26 @@ test('дві однакові POST з одним Idempotency-Key створюю�
   assert.equal(secondId, firstId, 'повтор повертає той самий результат');
 });
 
-test('завантаження: >10MB — 413, HTML/EXE/SVG-with-script — 400', async (t: any) => {
+test('завантаження: >1.5 МіБ — 413; HTML/EXE/SVG — 400 за magic bytes', async () => {
   const images: any = await import('../src/lib/images');
-  const convert = images.toWebPBlob ?? images.encodeWebP ?? images.processCover ?? images.convertToWebP ?? images.toWebP;
-  assert.equal(typeof convert, 'function', 'images.ts має експортувати конвертер зображень у WebP');
+  const processCover = images.processCover ?? images.processUpload ?? images.validateAndConvertImage ?? images.encodeWebP;
+  assert.equal(typeof processCover, 'function', 'images.ts має валідувати завантаження');
 
-  const call = async (bytes: Uint8Array, name: string, type: string) => {
-    const attempts: Array<() => Promise<any>> = [
-      () => convert(bytes),
-      () => convert(bytes, name),
-      () => convert(new File([bytes as any], name, { type })),
-      () => convert({ data: bytes, name, type })
-    ];
-    const errors: any[] = [];
-    for (const attempt of attempts) {
-      try { return await attempt(); } catch (error) { errors.push(error); }
-    }
-    // Пріоритет — помилка розміру (413), навіть якщо пізніші форми виклику дали 400.
-    throw errors.find((error) => error?.status === 413 || error?.statusCode === 413) ?? errors[0];
-  };
-
-  const huge = Buffer.alloc(11 * 1024 * 1024, 0x89);
+  // Валідний PNG-префікс, але розмір перевищує ліміт D1 для BLOB (1.5 МіБ).
+  const pngMagic = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const limit = images.D1_MAX_COVER_BYTES ?? 1_500_000;
+  const huge = new Uint8Array(limit + 1);
+  huge.set(pngMagic);
   await assert.rejects(
-    () => call(huge, 'huge.png', 'image/png'),
+    () => processCover(huge),
     (error: any) => {
       const status = error?.status ?? error?.statusCode ?? error?.code;
-      return status === 413 || /завеликий|10\s?MB|large|size|розмір/i.test(String(error?.message ?? error));
+      return status === 413 || /завеликий|1[,.\s]?5|large|size|розмір/i.test(String(error?.message ?? error));
     },
-    'файл понад 10MB має відхилятися з 413'
+    'файл понад 1.5 МіБ має відхилятися з 413'
   );
 
+  // Назва та заявлений MIME навмисно оманливі — вирішує лише вміст.
   const dangerous: Array<[Uint8Array, string, string]> = [
     [Buffer.from('<script>alert(1)</script>'), 'cover.png', 'image/png'],
     [Buffer.from('MZ\x90\x00This is a Windows executable'), 'cover.exe', 'application/octet-stream'],
@@ -220,10 +220,10 @@ test('завантаження: >10MB — 413, HTML/EXE/SVG-with-script — 400'
   ];
   for (const [bytes, name, type] of dangerous) {
     await assert.rejects(
-      () => call(bytes, name, type),
+      () => processCover(new File([bytes as any], name, { type })),
       (error: any) => {
         const status = error?.status ?? error?.statusCode ?? error?.code;
-        return status === 400 || /недійсний|формат|тип|image|webp|magic|підтрим/i.test(String(error?.message ?? error));
+        return status === 400 || /недійсний|формат|тип|image|magic|підтрим/i.test(String(error?.message ?? error));
       },
       `${name} має відхилятися з 400`
     );
@@ -237,28 +237,30 @@ test('шапка на 375px: підписи не ламаються по скл�
   assert.doesNotMatch(nav + css, /word-break:\s*break-all/, 'не можна рвати слова по складах');
 });
 
-test('валідний PNG перекодується у WebP', async (t: any) => {
+test('валідний PNG зберігається оригіналом з MIME за magic bytes', async () => {
   const images: any = await import('../src/lib/images');
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
     'base64'
   );
-  const convert = images.toWebPBlob ?? images.encodeWebP ?? images.processCover ?? images.convertToWebP ?? images.toWebP;
-  let result: any;
-  for (const attempt of [
-    () => convert(png),
-    () => convert(png, 'pixel.png'),
-    () => convert(new File([png], 'pixel.png', { type: 'image/png' })),
-    () => convert({ data: png, name: 'pixel.png', type: 'image/png' })
-  ]) {
-    try { result = await attempt(); break; } catch { /* пробуємо наступну форму виклику */ }
-  }
-  assert.ok(result, 'PNG має успішно перекодуватися');
+  // Ім'я та MIME навмисно хибні: у Workers немає перекодування, лише sniffing.
+  const result: any = await images.processCover(new File([png], 'pixel.exe', { type: 'text/html' }));
+  assert.ok(result, 'PNG має проходити валідацію');
+
   let bytes: Uint8Array;
   if (result instanceof Uint8Array) bytes = result;
   else if (typeof Blob !== 'undefined' && result instanceof Blob) bytes = new Uint8Array(await result.arrayBuffer());
   else if (result?.blob instanceof Uint8Array) bytes = result.blob;
-  else bytes = new Uint8Array(result?.data ?? result?.buffer ?? []);
-  assert.equal(Buffer.from(bytes.slice(0, 4)).toString('ascii'), 'RIFF', 'результат має бути WebP (RIFF)');
-  assert.equal(Buffer.from(bytes.slice(8, 12)).toString('ascii'), 'WEBP');
+  else bytes = new Uint8Array(result?.bytes ?? result?.data ?? result?.buffer ?? []);
+
+  assert.equal(Buffer.from(bytes).toString('base64'), png.toString('base64'), 'байти обкладинки зберігаються без змін');
+  assert.equal(Buffer.from(bytes.slice(0, 8)).toString('hex'), '89504e470d0a1a0a', 'має зберегтися PNG-magic');
+  assert.notEqual(Buffer.from(bytes.slice(0, 4)).toString('ascii'), 'RIFF', 'не має бути перекодування у WebP');
+  assert.equal(detectImageMime(bytes), 'image/png');
+  assert.equal(result.mime ?? result.sourceMime, 'image/png', 'MIME визначається вмістом, а не ім\'ям файлу');
+  assert.equal(Number(result.size ?? bytes.length), png.length);
+
+  const headers = images.coverHeaders(result.mime ?? 'image/png');
+  assert.equal(headers['Content-Type'], 'image/png');
+  assert.equal(headers['X-Content-Type-Options'], 'nosniff');
 });

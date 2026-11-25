@@ -1,0 +1,27 @@
+{
+  "name": "tusivka",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-11-25",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tusivka",
+      "database_id": "4f788f64-355d-416a-b06a-3df2666c4344",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "SESSION_COOKIE_NAME": "session",
+    "SESSION_TTL_DAYS": "30",
+    "SECURE_COOKIES": "true",
+    "MAX_EVENT_YEARS": "2",
+    "MAX_UPLOAD_BYTES": "1572864",
+    "MODERATOR_EMAILS": "arsen@tusivka.local"
+  }
+}

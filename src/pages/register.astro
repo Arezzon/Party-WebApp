@@ -4,7 +4,6 @@ import Layout from '../layouts/Layout.astro';
 import AuthForm from '../components/site/AuthForm';
 import { registerSchema, formatZodError } from '../lib/validation.ts';
 import { registerUser, getUserById } from '../lib/auth.ts';
-import { withIdempotency } from '../lib/idempotency.ts';
 
 let error = '';
 
@@ -31,11 +30,9 @@ if (Astro.request.method === 'POST') {
       Astro.response.status = 400;
     } else {
       try {
-        const create = () => registerUser(parsed.data);
-        const result = key
-          ? await withIdempotency(`register:${parsed.data.email}`, key, 'user', create)
-          : create();
-        const user = typeof result === 'string' ? getUserById(result) : result;
+        // Registration is idempotent by the UNIQUE(email) constraint; an
+        // IdempotencyKey row cannot reference a user that does not exist yet.
+        const user = await registerUser(parsed.data);
         if (!user) throw new Error('Не вдалося створити акаунт.');
         return Astro.redirect('/login?registered=1', 303);
       } catch (cause) {

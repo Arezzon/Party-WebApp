@@ -9,7 +9,9 @@ export const GET: APIRoute = async (ctx) => {
   const user = await currentUser(ctx as any);
   if (!user) return friendly(401, 'Потрібен вхід у акаунт');
   if (!isModerator(user.email)) return friendly(403, 'Доступ лише для модераторів');
-  return new Response(JSON.stringify({ reports: listOpenReports(getDb()) }, null, 2), {
+  const db = await getDb();
+  const reports = await listOpenReports(db);
+  return new Response(JSON.stringify({ reports }, null, 2), {
     headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
   });
 };
