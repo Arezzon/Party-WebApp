@@ -2,6 +2,8 @@
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
 import { getDb } from '../lib/db';
+import HeroTitle from '../components/site/HeroTitle';
+import EventFilters from '../components/site/EventFilters.astro';
 
 const q = (Astro.url.searchParams.get('q') ?? '').trim();
 const needle = q.toLocaleLowerCase('uk-UA');
@@ -47,6 +49,7 @@ const events = filtered.map((event) => {
     id: event.id,
     title: String(event.title ?? ''),
     date: dateFmt.format(date),
+    ts: date.getTime(),
     day: parts.find((p) => p.type === 'day')?.value ?? '',
     month: parts.find((p) => p.type === 'month')?.value ?? '',
     free: Math.max(0, event.places - event.taken),
@@ -58,10 +61,7 @@ const events = filtered.map((event) => {
 <Layout title="Тусовка — події" description="Події та зустрічі у Києві. Обирай своє, записуйся, приходь.">
   <section class="fade-up">
     <p class="eyebrow">Київ · події після заходу</p>
-    <h1 class="display mt-5 max-w-[15ch] text-[clamp(2.6rem,6.2vw,4.6rem)]">
-      Знайди своїх.<br />
-      <span class="serif">після заходу.</span>
-    </h1>
+    <HeroTitle client:load />
     <p class="mt-6 max-w-[38ch] text-lg leading-relaxed text-muted-foreground sm:text-xl">
       Короткий список подій, заради яких варто вийти з дому. Обирай, записуйся, приходь.
     </p>
@@ -94,7 +94,7 @@ const events = filtered.map((event) => {
         <p class="eyebrow">Афіша</p>
         <h2 class="display mt-2 text-3xl sm:text-4xl">Найближчі події</h2>
       </div>
-      <p class="eyebrow">{events.length} подій</p>
+      <p id="events-count" class="eyebrow">{events.length} подій</p>
     </div>
 
     <form method="get" action="/" class="mt-8 flex flex-wrap gap-3">
@@ -107,6 +107,7 @@ const events = filtered.map((event) => {
         aria-label="Пошук подій за назвою"
       />
       <button class="pill pill--ghost" type="submit">Знайти</button>
+      <EventFilters />
     </form>
 
     {q ? (
@@ -115,10 +116,15 @@ const events = filtered.map((event) => {
       </p>
     ) : null}
 
-    <div class="mt-8">
-      {events.length ? (
-        events.map((event) => (
-          <a class="event-row group" href={`/events/${event.id}`}>
+    <div id="event-list" class="mt-8">
+      {events.length > 0 && events.map((event) => (
+          <a
+            class="event-row group"
+            href={`/events/${event.id}`}
+            data-free={event.free}
+            data-ts={event.ts}
+            data-title={event.title}
+          >
             <span class="event-row__cover" aria-hidden="true">
               {event.cover ? (
                 <img src={event.cover} alt="" width="56" height="56" loading="lazy" decoding="async" />
@@ -141,14 +147,12 @@ const events = filtered.map((event) => {
             </span>
             <span class="event-row__arrow text-lg" aria-hidden="true">→</span>
           </a>
-        ))
-      ) : (
-        <div class="card dots flex flex-col items-center gap-4 px-6 py-16 text-center">
-          <p class="eyebrow">Порожньо</p>
-          <p class="text-lg">Подій поки немає. Може, першу зробиш ти?</p>
-          <a href="/events/new" class="pill pill--primary">Створити подію</a>
-        </div>
-      )}
+      ))}
+      <div id="events-empty" class="card dots flex flex-col items-center gap-4 px-6 py-16 text-center" hidden={events.length > 0}>
+        <p class="eyebrow">Порожньо</p>
+        <p class="text-lg">Нічого не знайдено. Спробуй інші фільтри.</p>
+        <a href="/" class="pill pill--primary">Скинути пошук і фільтри</a>
+      </div>
     </div>
   </section>
 </Layout>

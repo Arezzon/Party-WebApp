@@ -52,6 +52,7 @@
 }
 
 * { border-color: var(--border); }
+[hidden] { display: none !important; }
 
 html {
   font-family: var(--font-sans);

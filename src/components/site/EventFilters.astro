@@ -1,0 +1,113 @@
+---
+// Progressive-disclosure filters for the event list. Keeps the page static;
+// only this small script touches the already-rendered rows.
+---
+
+<button
+  id="filters-toggle"
+  type="button"
+  class="pill pill--ghost"
+  aria-expanded="false"
+  aria-controls="filters-panel"
+>
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+    <path d="M4 6h16M7 12h10m-7 6h4" />
+  </svg>
+  Фільтри
+  <span id="filters-badge" class="mono hidden rounded-full bg-foreground px-2 py-0.5 text-[11px] text-background" aria-hidden="true">0</span>
+</button>
+
+<div id="filters-panel" class="card mt-4 p-5 sm:p-6" hidden>
+  <div class="grid gap-5 sm:grid-cols-3">
+    <label class="field-label">
+      <span>Період</span>
+      <select id="filter-period" class="field">
+        <option value="all">Усі події</option>
+        <option value="week">Найближчі 7 днів</option>
+        <option value="month">Найближчі 30 днів</option>
+      </select>
+    </label>
+
+    <label class="field-label">
+      <span>Сортування</span>
+      <select id="filter-sort" class="field">
+        <option value="date">Спочатку найближчі</option>
+        <option value="latest">Спочатку пізніші</option>
+        <option value="title">За назвою</option>
+      </select>
+    </label>
+
+    <label class="flex items-center gap-3 self-end pb-1 text-sm">
+      <input id="filter-free" type="checkbox" class="h-5 w-5 shrink-0 accent-current" />
+      <span>Тільки з вільними місцями</span>
+    </label>
+  </div>
+
+  <div class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
+    <p id="filter-summary" class="eyebrow" role="status" aria-live="polite">Показано всі події</p>
+    <button id="filter-reset" type="button" class="pill pill--ghost pill--sm">Скинути фільтри</button>
+  </div>
+</div>
+
+<script>
+  const toggle = document.getElementById('filters-toggle');
+  const panel = document.getElementById('filters-panel');
+  const badge = document.getElementById('filters-badge');
+  const period = document.getElementById('filter-period') as HTMLSelectElement | null;
+  const sort = document.getElementById('filter-sort') as HTMLSelectElement | null;
+  const freeOnly = document.getElementById('filter-free') as HTMLInputElement | null;
+  const reset = document.getElementById('filter-reset');
+  const summary = document.getElementById('filter-summary');
+  const count = document.getElementById('events-count');
+  const empty = document.getElementById('events-empty');
+  const list = document.getElementById('event-list');
+  const rows = list ? Array.from(list.querySelectorAll<HTMLElement>('.event-row')) : [];
+
+  toggle?.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!open));
+    if (panel) panel.hidden = open;
+    if (!open) period?.focus();
+  });
+
+  function apply() {
+    if (!period || !sort || !freeOnly || !list) return;
+    const now = Date.now();
+    const span = period.value === 'week' ? 7 * 86400000 : period.value === 'month' ? 30 * 86400000 : Infinity;
+    const onlyFree = freeOnly.checked;
+
+    const visible = rows.filter((row) => {
+      if (onlyFree && Number(row.dataset.free ?? 0) === 0) return false;
+      const at = Number(row.dataset.ts ?? 0);
+      return at >= now && at <= now + span;
+    });
+
+    visible.sort((a, b) => {
+      if (sort.value === 'title') return (a.dataset.title ?? '').localeCompare(b.dataset.title ?? '', 'uk');
+      if (sort.value === 'latest') return Number(b.dataset.ts ?? 0) - Number(a.dataset.ts ?? 0);
+      return Number(a.dataset.ts ?? 0) - Number(b.dataset.ts ?? 0);
+    });
+
+    rows.forEach((row) => { row.hidden = true; });
+    visible.forEach((row) => { row.hidden = false; list.appendChild(row); });
+
+    const active = Number(period.value !== 'all') + Number(sort.value !== 'date') + Number(onlyFree);
+    if (badge) {
+      badge.textContent = String(active);
+      badge.classList.toggle('hidden', active === 0);
+    }
+    if (summary) summary.textContent = `Показано ${visible.length} з ${rows.length}`;
+    if (count) count.textContent = `${visible.length} подій`;
+    if (empty) empty.hidden = visible.length > 0;
+  }
+
+  period?.addEventListener('change', apply);
+  sort?.addEventListener('change', apply);
+  freeOnly?.addEventListener('change', apply);
+  reset?.addEventListener('click', () => {
+    if (period) period.value = 'all';
+    if (sort) sort.value = 'date';
+    if (freeOnly) freeOnly.checked = false;
+    apply();
+  });
+</script>
