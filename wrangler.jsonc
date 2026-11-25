@@ -18,7 +18,10 @@
   ],
   "vars": {
     "SESSION_COOKIE_NAME": "session",
+    "SESSION_TTL_DAYS": "30",
+    "SECURE_COOKIES": "true",
     "MAX_EVENT_YEARS": "2",
-    "MAX_UPLOAD_BYTES": "1572864"
+    "MAX_UPLOAD_BYTES": "1572864",
+    "MODERATOR_EMAILS": "arsen@tusivka.local"
   }
 }

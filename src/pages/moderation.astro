@@ -5,12 +5,12 @@ import { requireUser } from '../lib/auth.ts';
 import { getDb } from '../lib/db.ts';
 import { isModerator, listOpenReports } from '../lib/moderation.ts';
 
-const user = requireUser(Astro);
+const user = await requireUser(Astro);
 if (!user || !isModerator(user.email)) {
   return new Response('Доступ лише для модераторів.', { status: 403 });
 }
 
-const reports = listOpenReports(getDb());
+const reports = await listOpenReports(await getDb());
 const fmt = new Intl.DateTimeFormat('uk-UA', {
   timeZone: 'Europe/Kyiv', dateStyle: 'medium', timeStyle: 'short'
 });

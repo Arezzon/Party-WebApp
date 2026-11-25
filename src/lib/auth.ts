@@ -158,26 +158,29 @@ export function toPublicUser(user: UserRow | null | undefined): PublicUser | nul
   };
 }
 
-export function getUserById(id: string): PublicUser | null {
+export async function getUserById(id: string): Promise<PublicUser | null> {
   if (!id) return null;
-  const row = getDb().prepare('SELECT * FROM Users WHERE id = ?').get(id) as UserRow | undefined;
+  const db = await getDb();
+  const row = (await db.prepare('SELECT * FROM Users WHERE id = ?').get(id)) as UserRow | undefined;
   return toPublicUser(row);
 }
 
-export function getUserByEmail(email: string): PublicUser | null {
+export async function getUserByEmail(email: string): Promise<PublicUser | null> {
   if (!email) return null;
-  const row = getDb()
+  const db = await getDb();
+  const row = (await db
     .prepare('SELECT * FROM Users WHERE email = ? COLLATE NOCASE')
-    .get(String(email).trim().toLowerCase()) as UserRow | undefined;
+    .get(String(email).trim().toLowerCase())) as UserRow | undefined;
   return toPublicUser(row);
 }
 
 /** Full row including password_hash — server-side authentication only. */
-export function getUserRecordByEmail(email: string): UserRow | null {
+export async function getUserRecordByEmail(email: string): Promise<UserRow | null> {
   if (!email) return null;
-  return (getDb()
+  const db = await getDb();
+  return ((await db
     .prepare('SELECT * FROM Users WHERE email = ? COLLATE NOCASE')
-    .get(String(email).trim().toLowerCase()) as UserRow | undefined) ?? null;
+    .get(String(email).trim().toLowerCase())) as UserRow | undefined) ?? null;
 }
 
 export interface RegisterInput {
@@ -186,7 +189,7 @@ export interface RegisterInput {
   name: string;
 }
 
-export function registerUser(input: RegisterInput): PublicUser {
+export async function registerUser(input: RegisterInput): Promise<PublicUser> {
   const email = String(input?.email ?? '').trim().toLowerCase();
   const name = String(input?.name ?? '').trim();
   const password = String(input?.password ?? '');
@@ -195,7 +198,7 @@ export function registerUser(input: RegisterInput): PublicUser {
   if (password.length < 8 || password.length > 128) {
     throw new AuthError('Пароль має бути від 8 до 128 символів', 'invalid_password');
   }
-  if (getUserByEmail(email)) throw new AuthError('Цей email уже зареєстровано', 'email_taken');
+  if (await getUserByEmail(email)) throw new AuthError('Цей email уже зареєстровано', 'email_taken');
 
   const user: UserRow = {
     id: newId(),
@@ -204,7 +207,8 @@ export function registerUser(input: RegisterInput): PublicUser {
     password_hash: hashPassword(password),
     created_at: nowIso()
   };
-  getDb()
+  const db = await getDb();
+  await db
     .prepare('INSERT INTO Users (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)')
     .run(user.id, user.email, user.name, user.password_hash, user.created_at);
   return toPublicUser(user)!;
@@ -212,8 +216,8 @@ export function registerUser(input: RegisterInput): PublicUser {
 export const createUser = registerUser;
 
 /** Returns a public user or null; does not touch the rate limiter. */
-export function authenticateUser(email: string, password: string): PublicUser | null {
-  const row = getUserRecordByEmail(email);
+export async function authenticateUser(email: string, password: string): Promise<PublicUser | null> {
+  const row = await getUserRecordByEmail(email);
   if (!row) return null;
   if (!verifyPassword(String(password ?? ''), row.password_hash)) return null;
   return toPublicUser(row);
@@ -226,51 +230,56 @@ export interface CreatedSession {
   userId: string;
 }
 
-export function createSession(userId: string): CreatedSession {
+export async function createSession(userId: string): Promise<CreatedSession> {
   if (!userId) throw new AuthError('Немає користувача', 'missing_user');
   const token = randomSessionToken();
   const tokenHash = hashSessionToken(token);
   const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000).toISOString();
-  getDb()
+  const db = await getDb();
+  await db
     .prepare('INSERT INTO Sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)')
     .run(tokenHash, userId, expiresAt, nowIso());
   return { token, tokenHash, expiresAt, userId };
 }
 
-export function getSession(token: string): SessionRecord | null {
+export async function getSession(token: string): Promise<SessionRecord | null> {
   if (!token) return null;
-  const row = getDb()
+  const db = await getDb();
+  const row = (await db
     .prepare('SELECT token_hash, user_id, expires_at, created_at FROM Sessions WHERE token_hash = ?')
-    .get(hashSessionToken(token)) as SessionRecord | undefined;
+    .get(hashSessionToken(token))) as SessionRecord | undefined;
   if (!row) return null;
   if (Date.parse(row.expires_at) <= Date.now()) {
-    deleteSession(token);
+    await deleteSession(token);
     return null;
   }
   return row;
 }
 
-export function getSessionUser(token: string): PublicUser | null {
-  const session = getSession(token);
+export async function getSessionUser(token: string): Promise<PublicUser | null> {
+  const session = await getSession(token);
   if (!session) return null;
   return getUserById(session.user_id);
 }
 
-export function deleteSession(token: string): void {
+export async function deleteSession(token: string): Promise<void> {
   if (!token) return;
   try {
-    getDb().prepare('DELETE FROM Sessions WHERE token_hash = ?').run(hashSessionToken(token));
+    const db = await getDb();
+    await db.prepare('DELETE FROM Sessions WHERE token_hash = ?').run(hashSessionToken(token));
   } catch { /* best effort */ }
 }
 export const invalidateSession = deleteSession;
 
-export function deleteUserSessions(userId: string): void {
+export async function deleteUserSessions(userId: string): Promise<void> {
   if (!userId) return;
-  getDb().prepare('DELETE FROM Sessions WHERE user_id = ?').run(userId);
+  const db = await getDb();
+  await db.prepare('DELETE FROM Sessions WHERE user_id = ?').run(userId);
 }
 
-export function cleanupExpiredSessions(): void {
-  getDb().prepare('DELETE FROM Sessions WHERE expires_at <= ?').run(nowIso());
+export async function cleanupExpiredSessions(): Promise<void> {
+  const db = await getDb();
+  await db.prepare('DELETE FROM Sessions WHERE expires_at <= ?').run(nowIso());
 }
 
 /* ------------------------------- cookies -------------------------------- */
@@ -347,20 +356,20 @@ export const deleteSessionCookie = clearSessionCookie;
  * Returns the signed-in user or null. Never throws a redirect response:
  * callers decide between 302, 401 or a rendered page.
  */
-export function requireUser(context: any): PublicUser | null {
+export async function requireUser(context: any): Promise<PublicUser | null> {
   if (!context) return null;
   const fromLocals = context.locals?.user;
   if (fromLocals && typeof fromLocals === 'object' && fromLocals.id) {
     return toPublicUser(fromLocals as UserRow);
   }
   const token = readSessionToken(context);
-  return token ? getSessionUser(token) : null;
+  return token ? await getSessionUser(token) : null;
 }
 export const getCurrentUser = requireUser;
 export const getUser = requireUser;
 
-export function requireUserOrRedirect(context: any, path = '/login'): PublicUser | Response {
-  const user = requireUser(context);
+export async function requireUserOrRedirect(context: any, path = '/login'): Promise<PublicUser | Response> {
+  const user = await requireUser(context);
   if (user) return user;
   return new Response(null, { status: 302, headers: { Location: path, 'Cache-Control': 'no-store' } });
 }
@@ -426,15 +435,15 @@ export interface LoginResult {
   expiresAt: string;
 }
 
-export function loginUser(email: string, password: string, key = 'local'): LoginResult {
+export async function loginUser(email: string, password: string, key = 'local'): Promise<LoginResult> {
   if (isRateLimited(key)) throw new AuthError(LOGIN_LIMIT_MESSAGE, 'rate_limited');
-  const user = authenticateUser(email, password);
+  const user = await authenticateUser(email, password);
   if (!user) {
     recordFailedLogin(key);
     throw new AuthError('Невірний email або пароль', 'invalid_credentials');
   }
   clearLoginFailures(key);
-  const session = createSession(user.id);
+  const session = await createSession(user.id);
   return { user, token: session.token, expiresAt: session.expiresAt };
 }
 

@@ -53,23 +53,23 @@ export interface EventPatch {
 
 /* ---------- small schema-compatibility helpers -------------------------- */
 
-type DbLike = ReturnType<typeof getDb>;
+type DbLike = Awaited<ReturnType<typeof getDb>>;
 
 function quote(name: string): string {
   return `"${name.replaceAll('"', '""')}"`;
 }
 
-function tableOf(db: DbLike, base: string): string {
+async function tableOf(db: DbLike, base: string): Promise<string> {
   const wanted = base.toLowerCase().replace(/_/g, '');
-  const rows = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[];
+  const rows = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all()) as { name: string }[];
   const found = rows.find((r) => r.name.toLowerCase().replace(/_/g, '') === wanted)
     ?? rows.find((r) => r.name.toLowerCase().replace(/_/g, '') === `${wanted}s`);
   return found?.name ?? base;
 }
 
-function columnOf(db: DbLike, table: string, logical: string): string {
+async function columnOf(db: DbLike, table: string, logical: string): Promise<string> {
   const normalized = logical.toLowerCase().replace(/_/g, '');
-  const info = db.prepare(`PRAGMA table_info(${quote(table)})`).all() as { name: string }[];
+  const info = (await db.prepare(`PRAGMA table_info(${quote(table)})`).all()) as { name: string }[];
   const found = info.find((c) => c.name === logical)
     ?? info.find((c) => c.name.toLowerCase().replace(/_/g, '') === normalized);
   return found?.name ?? logical;
@@ -85,19 +85,19 @@ interface Schema {
   rc: Record<string, string>;
 }
 
-function schema(): Schema {
-  const db = getDb();
-  const events = tableOf(db, 'Event');
-  const users = tableOf(db, 'User');
-  const rsvps = tableOf(db, 'RSVP');
+async function schema(): Promise<Schema> {
+  const db = await getDb();
+  const events = await tableOf(db, 'Event');
+  const users = await tableOf(db, 'User');
+  const rsvps = await tableOf(db, 'RSVP');
   const ec: Record<string, string> = {};
   for (const key of ['id', 'author_id', 'title', 'description', 'starts_at', 'places', 'cover_blob', 'cover_mime', 'visibility', 'invite_token', 'created_at']) {
-    ec[key] = columnOf(db, events, key);
+    ec[key] = await columnOf(db, events, key);
   }
   const uc: Record<string, string> = {};
-  for (const key of ['id', 'name', 'email']) uc[key] = columnOf(db, users, key);
+  for (const key of ['id', 'name', 'email']) uc[key] = await columnOf(db, users, key);
   const rc: Record<string, string> = {};
-  for (const key of ['event_id', 'user_id']) rc[key] = columnOf(db, rsvps, key);
+  for (const key of ['event_id', 'user_id']) rc[key] = await columnOf(db, rsvps, key);
   return { db, events, users, rsvps, ec, uc, rc };
 }
 
@@ -196,18 +196,18 @@ function validateInput(input: EventInput | EventPatch, partial: boolean): void {
   }
 }
 
-async function coverBytes(cover: Blob | File): Promise<Uint8Array> {
-  const webp = await processCover(cover);
-  const bytes = webp.blob;
+async function coverBytes(cover: Blob | File): Promise<{ bytes: Uint8Array; mime: string }> {
+  const processed = await processCover(cover);
+  const bytes = processed.blob;
   if (bytes.length > 10 * 1024 * 1024) throw new HttpError(413, 'Файл завеликий.');
-  return bytes;
+  return { bytes, mime: processed.mime };
 }
 
 /* ---------- row mapping ------------------------------------------------- */
 
-function mapEvent(row: Record<string, unknown> | undefined): EventRecord | null {
+async function mapEvent(row: Record<string, unknown> | undefined): Promise<EventRecord | null> {
   if (!row) return null;
-  const s = schema();
+  const s = await schema();
   const get = (key: string) => row[s.ec[key]];
   const blob = get('cover_blob') as Uint8Array | null | undefined;
   return {
@@ -228,44 +228,45 @@ function mapEvent(row: Record<string, unknown> | undefined): EventRecord | null 
 
 /* ---------- public API -------------------------------------------------- */
 
-export function getEvent(id: string): EventRecord | null {
-  const s = schema();
-  const row = s.db.prepare(`SELECT * FROM ${quote(s.events)} WHERE ${quote(s.ec.id)} = ?`).get(id) as Record<string, unknown> | undefined;
+export async function getEvent(id: string): Promise<EventRecord | null> {
+  const s = await schema();
+  const row = (await s.db.prepare(`SELECT * FROM ${quote(s.events)} WHERE ${quote(s.ec.id)} = ?`).get(id)) as Record<string, unknown> | undefined;
   return mapEvent(row);
 }
 
-export function listPublicEvents(search = ''): EventRecord[] {
-  const s = schema();
+export async function listPublicEvents(search = ''): Promise<EventRecord[]> {
+  const s = await schema();
   const now = new Date().toISOString();
-  const rows = s.db.prepare(
+  const rows = (await s.db.prepare(
     `SELECT * FROM ${quote(s.events)} WHERE ${quote(s.ec.visibility)} = 'public' AND ${quote(s.ec.starts_at)} > ? ORDER BY ${quote(s.ec.starts_at)} ASC`
-  ).all(now) as Record<string, unknown>[];
+  ).all(now)) as Record<string, unknown>[];
   const safe = search.replace(/[\\%_]/g, (ch) => `\\${ch}`).toLocaleLowerCase('uk');
-  return rows
-    .map((row) => {
-      const event = mapEvent(row);
-      if (!event) return null;
-      const authorName = row[s.uc.name];
-      if (authorName !== undefined && event.authorName === undefined) event.authorName = String(authorName);
-      return event;
-    })
+  const mapped = await Promise.all(rows.map(async (row) => {
+    const event = await mapEvent(row);
+    if (!event) return null;
+    const authorName = row[s.uc.name];
+    if (authorName !== undefined && event.authorName === undefined) event.authorName = String(authorName);
+    return event;
+  }));
+  return mapped
     .filter((event): event is EventRecord => Boolean(event))
     .filter((event) => !safe || event.title.toLocaleLowerCase('uk').includes(safe));
 }
 
-export function listUserEvents(userId: string): EventRecord[] {
-  const s = schema();
-  const rows = s.db.prepare(
+export async function listUserEvents(userId: string): Promise<EventRecord[]> {
+  const s = await schema();
+  const rows = (await s.db.prepare(
     `SELECT * FROM ${quote(s.events)} WHERE ${quote(s.ec.author_id)} = ? ORDER BY ${quote(s.ec.starts_at)} ASC`
-  ).all(userId) as Record<string, unknown>[];
-  return rows.map((row) => mapEvent(row)).filter((e): e is EventRecord => Boolean(e));
+  ).all(userId)) as Record<string, unknown>[];
+  const mapped = await Promise.all(rows.map((row) => mapEvent(row)));
+  return mapped.filter((e): e is EventRecord => Boolean(e));
 }
 
-export function getAttendees(eventId: string): { id: string; name: string; email: string }[] {
-  const s = schema();
-  const rows = s.db.prepare(
+export async function getAttendees(eventId: string): Promise<{ id: string; name: string; email: string }[]> {
+  const s = await schema();
+  const rows = (await s.db.prepare(
     `SELECT u.* FROM ${quote(s.rsvps)} r JOIN ${quote(s.users)} u ON u.${quote(s.uc.id)} = r.${quote(s.rc.user_id)} WHERE r.${quote(s.rc.event_id)} = ?`
-  ).all(eventId) as Record<string, unknown>[];
+  ).all(eventId)) as Record<string, unknown>[];
   return rows.map((row) => ({
     id: String(row[s.uc.id]),
     name: String(row[s.uc.name] ?? 'Знайомець'),
@@ -273,11 +274,11 @@ export function getAttendees(eventId: string): { id: string; name: string; email
   }));
 }
 
-export function rsvpCount(eventId: string): number {
-  const s = schema();
-  const row = s.db.prepare(
+export async function rsvpCount(eventId: string): Promise<number> {
+  const s = await schema();
+  const row = (await s.db.prepare(
     `SELECT COUNT(*) AS n FROM ${quote(s.rsvps)} WHERE ${quote(s.rc.event_id)} = ?`
-  ).get(eventId) as { n: number } | undefined;
+  ).get(eventId)) as { n: number } | undefined;
   return Number(row?.n ?? 0);
 }
 
@@ -309,22 +310,22 @@ export function canViewEventFromRequest(event: EventRecord, cookies: unknown, ur
 
 async function insertEvent(input: EventInput): Promise<EventRecord> {
   validateInput(input, false);
-  const s = schema();
+  const s = await schema();
   const id = randomUUID();
   const startsAt = normalizeStartsAt(input.startsAt);
-  let bytes: Uint8Array | null = null;
-  if (input.cover) bytes = await coverBytes(input.cover);
+  let cover: { bytes: Uint8Array; mime: string } | null = null;
+  if (input.cover) cover = await coverBytes(input.cover);
   const inviteToken = randomBytes(32).toString('hex');
   const createdAt = new Date().toISOString();
   const columns = [s.ec.id, s.ec.author_id, s.ec.title, s.ec.description, s.ec.starts_at, s.ec.places, s.ec.cover_blob, s.ec.cover_mime, s.ec.visibility, s.ec.invite_token, s.ec.created_at];
-  const values = [id, input.authorId, String(input.title).trim(), String(input.description ?? '').trim(), startsAt, normalizePlaces(input.places), bytes, 'image/webp', input.visibility === 'private' ? 'private' : 'public', inviteToken, createdAt];
-  s.db.prepare(
+  const values = [id, input.authorId, String(input.title).trim(), String(input.description ?? '').trim(), startsAt, normalizePlaces(input.places), cover?.bytes ?? null, cover?.mime ?? null, input.visibility === 'private' ? 'private' : 'public', inviteToken, createdAt];
+  await s.db.prepare(
     `INSERT INTO ${quote(s.events)} (${columns.map(quote).join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`
   ).run(...values);
-  return getEvent(id)!;
+  return (await getEvent(id))!;
 }
 
-function unwrapEventResult(result: unknown): EventRecord | null {
+async function unwrapEventResult(result: unknown): Promise<EventRecord | null> {
   if (!result) return null;
   if (typeof result === 'string') return getEvent(result);
   if (typeof result === 'object') {
@@ -344,18 +345,18 @@ export async function createEvent(input: EventInput & { authorId: string; idempo
   } else {
     result = await insertEvent({ ...payload, authorId });
   }
-  const event = unwrapEventResult(result);
+  const event = await unwrapEventResult(result);
   if (!event) throw new HttpError(400, 'Не вдалося створити подію.');
   return event;
 }
 
 export async function updateEvent(id: string, userId: string, patch: EventPatch): Promise<EventRecord> {
-  const current = getEvent(id);
+  const current = await getEvent(id);
   if (!current) throw new HttpError(404, 'Подію не знайдено.');
   if (current.authorId !== userId) throw new HttpError(403, 'Редагувати подію може лише автор.');
   validateInput(patch, true);
 
-  const s = schema();
+  const s = await schema();
   const sets: string[] = [];
   const values: unknown[] = [];
   const put = (column: string, value: unknown) => {
@@ -368,28 +369,29 @@ export async function updateEvent(id: string, userId: string, patch: EventPatch)
   if (patch.startsAt !== undefined) put(s.ec.starts_at, normalizeStartsAt(patch.startsAt));
   if (patch.places !== undefined) {
     const places = normalizePlaces(patch.places);
-    if (places < rsvpCount(id)) {
+    if (places < await rsvpCount(id)) {
       throw new HttpError(400, 'Не можна зменшити кількість місць нижче кількості записаних учасників.');
     }
     put(s.ec.places, places);
   }
   if (patch.visibility !== undefined) put(s.ec.visibility, patch.visibility === 'private' ? 'private' : 'public');
   if (patch.cover) {
-    put(s.ec.cover_blob, await coverBytes(patch.cover));
-    put(s.ec.cover_mime, 'image/webp');
+    const cover = await coverBytes(patch.cover);
+    put(s.ec.cover_blob, cover.bytes);
+    put(s.ec.cover_mime, cover.mime);
   }
   if (!sets.length) return current;
   values.push(id);
-  s.db.prepare(`UPDATE ${quote(s.events)} SET ${sets.join(', ')} WHERE ${quote(s.ec.id)} = ?`).run(...values);
-  return getEvent(id)!;
+  await s.db.prepare(`UPDATE ${quote(s.events)} SET ${sets.join(', ')} WHERE ${quote(s.ec.id)} = ?`).run(...values);
+  return (await getEvent(id))!;
 }
 
-export function deleteEvent(id: string, userId: string): void {
-  const current = getEvent(id);
+export async function deleteEvent(id: string, userId: string): Promise<void> {
+  const current = await getEvent(id);
   if (!current) throw new HttpError(404, 'Подію не знайдено.');
   if (current.authorId !== userId) throw new HttpError(403, 'Видаляти подію може лише автор.');
-  const s = schema();
-  s.db.prepare(`DELETE FROM ${quote(s.events)} WHERE ${quote(s.ec.id)} = ?`).run(id);
+  const s = await schema();
+  await s.db.prepare(`DELETE FROM ${quote(s.events)} WHERE ${quote(s.ec.id)} = ?`).run(id);
 }
 
 export function coverResponse(event: EventRecord): Response {
@@ -399,7 +401,7 @@ export function coverResponse(event: EventRecord): Response {
   return new Response(body, {
     status: 200,
     headers: {
-      'Content-Type': 'image/webp',
+      'Content-Type': event.coverMime || 'image/png',
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'no-referrer',
       'Cache-Control': 'public, max-age=3600'

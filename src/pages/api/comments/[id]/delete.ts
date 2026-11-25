@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { canViewEvent, currentUser, database, friendly, payloadText, readPayload, redirectTo } from '../../../invite/_check';
+import { canViewEvent, currentUser, database, friendly, readPayload, redirectTo } from '../../../invite/_check';
 import { logModerationAction } from '../../../../lib/moderation';
 
 export const prerender = false;
@@ -12,7 +12,7 @@ export const POST: APIRoute = async (ctx) => {
   const commentId = ctx.params?.id ?? '';
   if (!commentId) return friendly(404, 'Коментар не знайдено');
   const db = await database();
-  const comment = db.prepare(
+  const comment = await db.prepare(
     `SELECT c.id, c.event_id, c.author_id, c.body,
             e.visibility, e.invite_token, e.author_id AS event_author_id
        FROM comments c JOIN events e ON e.id = c.event_id
@@ -47,7 +47,7 @@ export const POST: APIRoute = async (ctx) => {
   }
   if (reportFlag && isEventAuthor && !isCommentAuthor) {
     try {
-      logModerationAction(db, {
+      await logModerationAction(db, {
         commentId: comment.id,
         eventId: comment.event_id,
         actorId: String(userId),
@@ -57,6 +57,6 @@ export const POST: APIRoute = async (ctx) => {
     } catch { /* підстава не блокує видалення */ }
   }
 
-  db.prepare('DELETE FROM comments WHERE id = ?').run(comment.id);
+  await db.prepare('DELETE FROM comments WHERE id = ?').run(comment.id);
   return redirectTo(ctx as any, `/events/${comment.event_id}`, 303);
 };

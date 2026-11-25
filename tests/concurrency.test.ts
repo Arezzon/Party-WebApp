@@ -6,15 +6,24 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 
 import { getDb } from '../src/lib/db';
-import { columns } from '../src/pages/invite/_check';
 import { POST as rsvpPost } from '../src/pages/api/events/[id]/rsvp';
 import { POST as unrsvpPost } from '../src/pages/api/events/[id]/unrsvp';
 import { POST as commentPost, GET as commentsGet } from '../src/pages/api/events/[id]/comments';
 
 /** Тестова інфраструктура — дзеркало інших тестів проєкту (node:test, без runner). */
 export async function db(): Promise<any> {
-  const raw: any = getDb();
+  const raw: any = await getDb();
   return raw?.db ?? raw;
+}
+
+/** Працює і з синхронними, і з асинхронними statement-ами. */
+async function columns(d: any, table: string): Promise<string[]> {
+  try {
+    const rows: any[] = await d.prepare(`PRAGMA table_info(${table})`).all();
+    return rows.map((row) => String(row.name).toLowerCase());
+  } catch {
+    return [];
+  }
 }
 
 export function makeCtx(options: {
@@ -54,17 +63,17 @@ export function makeCtx(options: {
   };
 }
 
-export function insertRow(d: any, table: string, values: Record<string, any>): void {
-  const existing = new Set(columns(d, table));
+export async function insertRow(d: any, table: string, values: Record<string, any>): Promise<void> {
+  const existing = new Set(await columns(d, table));
   const entries = Object.entries(values).filter(([key]) => existing.has(key.toLowerCase()));
   const names = entries.map(([key]) => key);
-  d.prepare(`INSERT INTO ${table} (${names.join(', ')}) VALUES (${names.map(() => '?').join(', ')})`)
+  await d.prepare(`INSERT INTO ${table} (${names.join(', ')}) VALUES (${names.map(() => '?').join(', ')})`)
     .run(...entries.map(([, value]) => value));
 }
 
-function createUser(d: any, name = 'Учасник'): { id: string; name: string } {
+async function createUser(d: any, name = 'Учасник'): Promise<{ id: string; name: string }> {
   const id = randomUUID();
-  insertRow(d, 'users', {
+  await insertRow(d, 'users', {
     id,
     email: `${id}@example.test`,
     name,
@@ -74,9 +83,9 @@ function createUser(d: any, name = 'Учасник'): { id: string; name: string
   return { id, name };
 }
 
-function createSession(d: any, userId: string): string {
+async function createSession(d: any, userId: string): Promise<string> {
   const token = randomBytes(32).toString('hex');
-  insertRow(d, 'sessions', {
+  await insertRow(d, 'sessions', {
     token_hash: createHash('sha256').update(token).digest('hex'),
     token,
     user_id: userId,
@@ -86,10 +95,10 @@ function createSession(d: any, userId: string): string {
   return token;
 }
 
-function createEvent(d: any, authorId: string, places: number, title = 'Тестова тусовка'): { id: string; token: string } {
+async function createEvent(d: any, authorId: string, places: number, title = 'Тестова тусовка'): Promise<{ id: string; token: string }> {
   const id = randomUUID();
   const token = randomBytes(32).toString('hex');
-  insertRow(d, 'events', {
+  await insertRow(d, 'events', {
     id,
     author_id: authorId,
     title,
@@ -104,16 +113,16 @@ function createEvent(d: any, authorId: string, places: number, title = 'Тест
   return { id, token };
 }
 
-function cleanup(d: any, ids: { users?: string[]; events?: string[]; comments?: string[] }): void {
-  const safe = (sql: string, ...args: any[]) => { try { d.prepare(sql).run(...args); } catch { /* каскад уже видалив */ } };
-  for (const eventId of ids.events ?? []) safe('DELETE FROM reports WHERE comment_id IN (SELECT id FROM comments WHERE event_id = ?)', eventId);
-  for (const commentId of ids.comments ?? []) safe('DELETE FROM reports WHERE comment_id = ?', commentId);
-  for (const eventId of ids.events ?? []) safe('DELETE FROM events WHERE id = ?', eventId);
+async function cleanup(d: any, ids: { users?: string[]; events?: string[]; comments?: string[] }): Promise<void> {
+  const safe = async (sql: string, ...args: any[]) => { try { await d.prepare(sql).run(...args); } catch { /* каскад уже видалив */ } };
+  for (const eventId of ids.events ?? []) await safe('DELETE FROM reports WHERE comment_id IN (SELECT id FROM comments WHERE event_id = ?)', eventId);
+  for (const commentId of ids.comments ?? []) await safe('DELETE FROM reports WHERE comment_id = ?', commentId);
+  for (const eventId of ids.events ?? []) await safe('DELETE FROM events WHERE id = ?', eventId);
   for (const userId of ids.users ?? []) {
-    safe('DELETE FROM sessions WHERE user_id = ?', userId);
-    safe('DELETE FROM rsvp WHERE user_id = ?', userId);
-    safe('DELETE FROM idempotencykey WHERE user_id = ?', userId);
-    safe('DELETE FROM users WHERE id = ?', userId);
+    await safe('DELETE FROM sessions WHERE user_id = ?', userId);
+    await safe('DELETE FROM rsvp WHERE user_id = ?', userId);
+    await safe('DELETE FROM idempotencykey WHERE user_id = ?', userId);
+    await safe('DELETE FROM users WHERE id = ?', userId);
   }
 }
 
@@ -129,16 +138,17 @@ function rsvpCtx(eventId: string, session: string, key: string) {
 
 test('20 паралельних «Іду» на одне місце: рівно 1×303 і 19×400', async (t: any) => {
   const d = await db();
-  const author = createUser(d, 'Організатор');
-  const event = createEvent(d, author.id, 1);
-  const participants = Array.from({ length: 20 }, () => {
-    const user = createUser(d);
-    return { id: user.id, session: createSession(d, user.id) };
-  });
-  t.after(() => cleanup(d, {
+  const author = await createUser(d, 'Організатор');
+  const event = await createEvent(d, author.id, 1);
+  const participants: Array<{ id: string; session: string }> = [];
+  for (let index = 0; index < 20; index += 1) {
+    const user = await createUser(d);
+    participants.push({ id: user.id, session: await createSession(d, user.id) });
+  }
+  t.after(async () => { await cleanup(d, {
     users: [author.id, ...participants.map((p) => p.id)],
     events: [event.id]
-  }));
+  }); });
 
   const responses = await Promise.all(
     participants.map((p) => rsvpPost(rsvpCtx(event.id, p.session, randomUUID()) as any))
@@ -147,7 +157,7 @@ test('20 паралельних «Іду» на одне місце: рівно 
   assert.equal(statuses.filter((status) => status === 303).length, 1, 'має бути рівно один успішний запис');
   assert.equal(statuses.filter((status) => status === 400).length, 19, 'решта мають отримати 400');
 
-  const row = d.prepare('SELECT COUNT(*) AS n FROM rsvp WHERE event_id = ?').get(event.id) as any;
+  const row: any = await d.prepare('SELECT COUNT(*) AS n FROM rsvp WHERE event_id = ?').get(event.id);
   assert.equal(Number(row.n), 1, 'у БД має бути рівно один RSVP');
   const success = responses.find((response) => response.status === 303);
   assert.equal(success?.headers.get('location'), `/events/${event.id}`);
@@ -155,18 +165,18 @@ test('20 паралельних «Іду» на одне місце: рівно 
 
 test('RSVP ідемпотентний: повтор із тим самим ключем і «Скасувати» не створюють дублів', async (t: any) => {
   const d = await db();
-  const author = createUser(d, 'Організатор');
-  const user = createUser(d);
-  const session = createSession(d, user.id);
-  const event = createEvent(d, author.id, 3);
-  t.after(() => cleanup(d, { users: [author.id, user.id], events: [event.id] }));
+  const author = await createUser(d, 'Організатор');
+  const user = await createUser(d);
+  const session = await createSession(d, user.id);
+  const event = await createEvent(d, author.id, 3);
+  t.after(async () => { await cleanup(d, { users: [author.id, user.id], events: [event.id] }); });
 
   const key = randomUUID();
   const first = await rsvpPost(rsvpCtx(event.id, session, key) as any);
   const second = await rsvpPost(rsvpCtx(event.id, session, key) as any);
   assert.equal(first.status, 303);
   assert.equal(second.status, 303);
-  assert.equal(Number((d.prepare('SELECT COUNT(*) AS n FROM rsvp WHERE event_id = ?').get(event.id) as any).n), 1);
+  assert.equal(Number((await d.prepare('SELECT COUNT(*) AS n FROM rsvp WHERE event_id = ?').get(event.id)).n), 1);
 
   const unrsvpUrl = `http://localhost/api/events/${event.id}/unrsvp`;
   const cancel = makeCtx({ method: 'POST', cookies: { session }, params: { id: event.id }, url: unrsvpUrl });
@@ -174,20 +184,20 @@ test('RSVP ідемпотентний: повтор із тим самим кл�
   assert.equal((await unrsvpPost(makeCtx({
     method: 'POST', cookies: { session }, params: { id: event.id }, url: unrsvpUrl
   }) as any)).status, 303, 'повторне скасування ідемпотентне');
-  assert.equal(Number((d.prepare('SELECT COUNT(*) AS n FROM rsvp WHERE event_id = ?').get(event.id) as any).n), 0);
+  assert.equal(Number((await d.prepare('SELECT COUNT(*) AS n FROM rsvp WHERE event_id = ?').get(event.id)).n), 0);
 
   const again = await rsvpPost(rsvpCtx(event.id, session, randomUUID()) as any);
   assert.equal(again.status, 303, 'після скасування можна записатися знову');
-  assert.equal(Number((d.prepare('SELECT COUNT(*) AS n FROM rsvp WHERE event_id = ?').get(event.id) as any).n), 1);
+  assert.equal(Number((await d.prepare('SELECT COUNT(*) AS n FROM rsvp WHERE event_id = ?').get(event.id)).n), 1);
 });
 
 test('коментарі: ідемпотентність, валідація й текст замість HTML', async (t: any) => {
   const d = await db();
-  const author = createUser(d, 'Організатор');
-  const user = createUser(d, 'Коментатор');
-  const session = createSession(d, user.id);
-  const event = createEvent(d, author.id, 5);
-  t.after(() => cleanup(d, { users: [author.id, user.id], events: [event.id] }));
+  const author = await createUser(d, 'Організатор');
+  const user = await createUser(d, 'Коментатор');
+  const session = await createSession(d, user.id);
+  const event = await createEvent(d, author.id, 5);
+  t.after(async () => { await cleanup(d, { users: [author.id, user.id], events: [event.id] }); });
 
   const dangerous = '<img src=x onerror="alert(1)">';
   const key = randomUUID();
@@ -204,7 +214,7 @@ test('коментарі: ідемпотентність, валідація й 
   const second = await commentPost(postCtx(dangerous, key) as any);
   assert.equal(first.status, 303);
   assert.equal(second.status, 303);
-  assert.equal(Number((d.prepare('SELECT COUNT(*) AS n FROM comments WHERE event_id = ?').get(event.id) as any).n), 1,
+  assert.equal(Number((await d.prepare('SELECT COUNT(*) AS n FROM comments WHERE event_id = ?').get(event.id)).n), 1,
     'дві однакові POST мають створити один коментар');
 
   const invalid = await commentPost(postCtx('   ', randomUUID()) as any);
@@ -225,12 +235,12 @@ test('коментарі: ідемпотентність, валідація й 
 
 test('200 паралельних запитів на дані головної: без 500, p95 < 1.5с', async (t: any) => {
   const d = await db();
-  const author = createUser(d, 'Організатор');
+  const author = await createUser(d, 'Організатор');
   const events = [
-    createEvent(d, author.id, 10, 'Тусовка Університет'),
-    createEvent(d, author.id, 10, 'Тусовка Натхнення')
+    await createEvent(d, author.id, 10, 'Тусовка Університет'),
+    await createEvent(d, author.id, 10, 'Тусовка Натхнення')
   ];
-  t.after(() => cleanup(d, { users: [author.id], events: events.map((event) => event.id) }));
+  t.after(async () => { await cleanup(d, { users: [author.id], events: events.map((event) => event.id) }); });
 
   const durations: number[] = [];
   const failures: unknown[] = [];
@@ -240,11 +250,11 @@ test('200 паралельних запитів на дані головної: 
       const q = index % 2 === 0 ? 'тус' : 'ТУС';
       const before = performance.now();
       try {
-        const rows = d.prepare(
+        const rows: any[] = await d.prepare(
           `SELECT e.id, e.title FROM events e
             WHERE e.visibility = 'public' AND e.starts_at > ?
             ORDER BY e.starts_at ASC LIMIT 500`
-        ).all(new Date().toISOString()) as any[];
+        ).all(new Date().toISOString());
         // Те сама регістронезалежна фільтрація, що й у src/pages/index.astro.
         const needle = q.toLocaleLowerCase('uk-UA');
         const found = rows.filter((row) => String(row.title ?? '').toLocaleLowerCase('uk-UA').includes(needle));

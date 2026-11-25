@@ -10,9 +10,9 @@ export const GET: APIRoute = async ({ params, cookies, redirect }) => {
   if (!INVITE_TOKEN_RE.test(token)) return friendly(404, 'Запрошення не знайдено');
 
   const db = await database();
-  const event = db
+  const event = (await db
     .prepare('SELECT id, invite_token FROM events WHERE invite_token = ?')
-    .get(token.toLowerCase()) as any;
+    .get(token.toLowerCase())) as any;
   if (!event) return friendly(404, 'Запрошення не знайдено');
 
   cookies.set(`invite_${event.id}`, token.toLowerCase(), {

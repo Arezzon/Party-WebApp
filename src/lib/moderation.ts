@@ -32,37 +32,37 @@ export function isModerator(
   return configured.some((item) => String(item).trim().toLocaleLowerCase() === value);
 }
 
-export function findOpenReport(db: any, commentId: string, reporterId: string): any | null {
-  return db.prepare(
+export async function findOpenReport(db: any, commentId: string, reporterId: string): Promise<any | null> {
+  return (await db.prepare(
     `SELECT * FROM Reports WHERE comment_id = ? AND reporter_id = ? AND status = 'open' LIMIT 1`
-  ).get(commentId, reporterId) ?? null;
+  ).get(commentId, reporterId)) ?? null;
 }
 
-export function createOpenReport(db: any, input: ReportInput): { report: any; created: boolean } {
-  const existing = findOpenReport(db, input.commentId, input.reporterId);
+export async function createOpenReport(db: any, input: ReportInput): Promise<{ report: any; created: boolean }> {
+  const existing = await findOpenReport(db, input.commentId, input.reporterId);
   if (existing) return { report: existing, created: false };
 
   const id = randomUUID();
   const createdAt = new Date().toISOString();
   try {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO Reports (id, comment_id, event_id, reporter_id, reason, status, created_at)
        VALUES (?, ?, ?, ?, ?, 'open', ?)`
     ).run(id, input.commentId, input.eventId, input.reporterId, input.reason, createdAt);
   } catch (error) {
-    const replay = findOpenReport(db, input.commentId, input.reporterId);
+    const replay = await findOpenReport(db, input.commentId, input.reporterId);
     if (replay) return { report: replay, created: false };
     throw error;
   }
   return {
-    report: db.prepare('SELECT * FROM Reports WHERE id = ?').get(id),
+    report: await db.prepare('SELECT * FROM Reports WHERE id = ?').get(id),
     created: true
   };
 }
 
-export function logModerationAction(db: any, input: ActionInput): string {
+export async function logModerationAction(db: any, input: ActionInput): Promise<string> {
   const id = randomUUID();
-  db.prepare(
+  await db.prepare(
     `INSERT INTO ModerationActions
        (id, report_id, comment_id, event_id, actor_id, action, reason, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -79,8 +79,8 @@ export function logModerationAction(db: any, input: ActionInput): string {
   return id;
 }
 
-export function listOpenReports(db: any): any[] {
-  return db.prepare(
+export async function listOpenReports(db: any): Promise<any[]> {
+  return (await db.prepare(
     `SELECT r.id, r.reason, r.created_at,
             c.id AS comment_id, c.body AS comment_body, c.author_id AS comment_author_id,
             COALESCE(cu.name, 'Знайомець') AS comment_author,
@@ -93,30 +93,30 @@ export function listOpenReports(db: any): any[] {
        LEFT JOIN Users ru ON ru.id = r.reporter_id
       WHERE r.status = 'open'
       ORDER BY r.created_at DESC, r.id DESC`
-  ).all() as any[];
+  ).all()) as any[];
 }
 
-export function resolveReport(
+export async function resolveReport(
   db: any,
   reportId: string,
   actorId: string,
   action: 'dismiss' | 'delete_comment',
   reason = ''
-): any | null {
-  const report = db.prepare(
+): Promise<any | null> {
+  const report = (await db.prepare(
     `SELECT r.*, c.event_id, c.id AS comment_id
        FROM Reports r LEFT JOIN Comments c ON c.id = r.comment_id
       WHERE r.id = ? AND r.status = 'open'`
-  ).get(reportId) as any;
+  ).get(reportId)) as any;
   if (!report) return null;
 
   const status = action === 'dismiss' ? 'dismissed' : 'comment_deleted';
-  db.prepare(
+  await db.prepare(
     `UPDATE Reports SET status = ?, resolved_at = ?, resolved_by = ?
       WHERE id = ? AND status = 'open'`
   ).run(status, new Date().toISOString(), actorId, reportId);
 
-  logModerationAction(db, {
+  await logModerationAction(db, {
     reportId,
     commentId: report.comment_id ?? '',
     eventId: report.event_id ?? '',
@@ -127,15 +127,15 @@ export function resolveReport(
   return report;
 }
 
-export function deleteCommentWithReport(db: any, reportId: string, actorId: string): any | null {
-  const report = db.prepare(
+export async function deleteCommentWithReport(db: any, reportId: string, actorId: string): Promise<any | null> {
+  const report = (await db.prepare(
     `SELECT r.id AS report_id, r.reason, c.id AS comment_id, c.event_id
        FROM Reports r JOIN Comments c ON c.id = r.comment_id
       WHERE r.id = ? AND r.status = 'open'`
-  ).get(reportId) as any;
+  ).get(reportId)) as any;
   if (!report) return null;
 
-  logModerationAction(db, {
+  await logModerationAction(db, {
     reportId,
     commentId: report.comment_id,
     eventId: report.event_id,
@@ -143,8 +143,8 @@ export function deleteCommentWithReport(db: any, reportId: string, actorId: stri
     action: 'delete_comment',
     reason: report.reason
   });
-  db.prepare('DELETE FROM Comments WHERE id = ?').run(report.comment_id);
-  db.prepare(
+  await db.prepare('DELETE FROM Comments WHERE id = ?').run(report.comment_id);
+  await db.prepare(
     `UPDATE Reports SET status = 'comment_deleted', resolved_at = ?, resolved_by = ?
       WHERE id = ? AND status = 'open'`
   ).run(new Date().toISOString(), actorId, reportId);

@@ -3,8 +3,8 @@ import { canViewEventFromRequest, coverResponse, getEvent } from '../../../lib/e
 
 export const prerender = false;
 
-export const GET: APIRoute = ({ params, cookies, url }) => {
-  const event = getEvent(String(params.id ?? ''));
+export const GET: APIRoute = async ({ params, cookies, url }) => {
+  const event = await getEvent(String(params.id ?? ''));
   if (!event || !canViewEventFromRequest(event, cookies, url)) {
     return new Response('Подію не знайдено.', {
       status: 404,

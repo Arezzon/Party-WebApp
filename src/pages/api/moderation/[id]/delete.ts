@@ -10,8 +10,8 @@ export const POST: APIRoute = async (ctx) => {
   if (!user) return friendly(401, 'Потрібен вхід у акаунт');
   if (!isModerator(user.email)) return friendly(403, 'Доступ лише для модераторів');
 
-  const db = getDb();
-  const result = deleteCommentWithReport(db, ctx.params?.id ?? '', String(user.id));
+  const db = await getDb();
+  const result = await deleteCommentWithReport(db, ctx.params?.id ?? '', String(user.id));
   if (!result) return friendly(404, 'Скаргу не знайдено');
   return redirectTo(ctx as any, '/moderation', 303);
 };

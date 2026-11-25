@@ -5,7 +5,6 @@ import { randomUUID } from 'node:crypto';
 import type { APIRoute } from 'astro';
 import {
   canViewEvent,
-  columns,
   currentUser,
   database,
   friendly,
@@ -23,6 +22,16 @@ import {
  * сторінка події рендерить його через textContent, тому `<img onerror>` лишається текстом.
  */
 
+/** Async-еквівалент columns() з invite/_check: всі методи БД тепер повертають Promise. */
+async function tableColumns(db: any, table: string): Promise<string[]> {
+  try {
+    const rows = (await db.prepare(`PRAGMA table_info(${table})`).all()) as any[];
+    return rows.map((row) => String(row.name).toLowerCase());
+  } catch {
+    return [];
+  }
+}
+
 function getKey(request: Request | undefined, body: Record<string, any>): string | null {
   const header =
     request?.headers.get('idempotency-key') ?? request?.headers.get('x-idempotency-key') ?? '';
@@ -39,7 +48,7 @@ export const POST: APIRoute = async (ctx) => {
   if (!eventId) return friendly(404, 'Подію не знайдено');
 
   const db = await database();
-  const event = db
+  const event = await db
     .prepare('SELECT id, visibility, invite_token, author_id FROM events WHERE id = ?')
     .get(eventId) as any;
   if (!event) return friendly(404, 'Подію не знайдено');
@@ -59,13 +68,13 @@ export const POST: APIRoute = async (ctx) => {
 
   const userId = String(user.id || user.user_id);
   const key = getKey(ctx.request, body) ?? randomUUID();
-  const commentCols = columns(db, 'comments');
-  const idemCols = columns(db, 'idempotencykey');
+  const commentCols = await tableColumns(db, 'comments');
+  const idemCols = await tableColumns(db, 'idempotencykey');
   const hasIdem = idemCols.includes('key') && idemCols.includes('user_id');
 
-  const create = (): { id: string; replay: boolean } => {
+  const create = async (): Promise<{ id: string; replay: boolean }> => {
     if (key && hasIdem) {
-      const replay = db
+      const replay = await db
         .prepare(`SELECT result_id FROM idempotencykey WHERE user_id = ? AND key = ? AND kind = 'comment'`)
         .get(userId, key) as any;
       if (replay?.result_id) return { id: String(replay.result_id), replay: true };
@@ -87,13 +96,13 @@ export const POST: APIRoute = async (ctx) => {
       cols.push('author_name');
       values.push(name);
     }
-    db.prepare(
+    await db.prepare(
       `INSERT INTO comments (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`
     ).run(...values);
 
     if (key && hasIdem) {
       try {
-        db.prepare(
+        await db.prepare(
           `INSERT OR IGNORE INTO idempotencykey (key, user_id, kind, result_id, created_at)
            VALUES (?, ?, 'comment', ?, ?)`
         ).run(key, userId, id, createdAt);
@@ -104,8 +113,7 @@ export const POST: APIRoute = async (ctx) => {
     return { id, replay: false };
   };
 
-  if (typeof db.transaction === 'function') db.transaction(create)();
-  else create();
+  await create();
 
   return redirectTo(ctx as any, `/events/${encodeURIComponent(eventId)}`, 303);
 };
@@ -116,7 +124,7 @@ export const GET: APIRoute = async (ctx) => {
   if (!eventId) return friendly(404, 'Подію не знайдено');
 
   const db = await database();
-  const event = db
+  const event = await db
     .prepare('SELECT id, visibility, invite_token, author_id FROM events WHERE id = ?')
     .get(eventId) as any;
   if (!event) return friendly(404, 'Подію не знайдено');
@@ -124,13 +132,13 @@ export const GET: APIRoute = async (ctx) => {
     return friendly(404, 'Подію не знайдено');
   }
 
-  const cols = columns(db, 'comments');
+  const cols = await tableColumns(db, 'comments');
   const nameCol = cols.includes('author_name_snapshot')
     ? 'author_name_snapshot'
     : cols.includes('author_name')
       ? 'author_name'
       : null;
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT id, body, created_at${nameCol ? `, ${nameCol} AS author_name` : ''}
          FROM comments WHERE event_id = ? ORDER BY created_at ASC, id ASC`

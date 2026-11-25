@@ -2,7 +2,7 @@
 
 Спрощений Meetup: користувачі створюють події з обмеженою кількістю місць, інші на них записуються. Публічні/приватні події, обкладинки, пошук, коментарі, запрошення, профіль.
 
-Стек: **Astro 7 (SSR, `@astrojs/node`, standalone) + React 19 + Tailwind 4 + shadcn/ui + React Bits** (registry `@reactbits`). Дані — SQLite (WAL), обкладинки — WebP BLOB у БД.
+Стек: **Astro 7 (SSR на Cloudflare Workers через `@astrojs/cloudflare`) + React 19 + Tailwind 4 + shadcn/ui + React Bits** (registry `@reactbits`). Дані — D1 (SQLite сумісний), обкладинки — BLOB у D1.
 
 ## Запуск
 
@@ -11,19 +11,24 @@
 ```bash
 npm install
 cp .env.example .env
-# відредагуй .env: обов'язково задай SESSION_SECRET (openssl rand -hex 32)
-npm run dev          # http://localhost:4321
+printf 'SESSION_SECRET=%s\n' "$(openssl rand -hex 32)" > .dev.vars
+npm run dev          # http://localhost:4321, локальний workerd + локальна D1
 ```
 
-Продакшен:
+Продакшен (Cloudflare Workers Free):
 
 ```bash
 npm ci
 npm run build
-HOST=0.0.0.0 PORT=4321 node ./dist/server/entry.mjs
+npx wrangler d1 migrations apply tusivka --local
+npx wrangler d1 migrations apply tusivka --remote
+npx wrangler secret put SESSION_SECRET
+npx wrangler deploy
 ```
 
-Або `npm run preview` для локальної перевірки зібраної версії.
+Працює на https://tusivka.arambaran957.workers.dev. D1 Free: 5 млн read/день,
+100 тис. write/день, 5 ГБ. D1 обмежує рядок/BLOB 2 МБ, тому обкладинки — до
+1.5 МБ і зберігаються оригінальними байтами (без `sharp`/R2).
 
 ## Змінні середовища
 
@@ -53,7 +58,8 @@ npm run build     # продакшен-білд
 
 - `specs/001-tusivka-events/`, `specs/002-moderation-reports/` — Spec Kit: `spec.md`, `plan.md`, `tasks.md`, `data-model.md`, `contracts/`, `checklists/`
 - `.specify/memory/constitution.md` — принципи проєкту
-- `src/lib/` — DB, auth, валідація, ідемпотентність, moderation, зображення, час, події
+- `src/lib/` — async D1-фасад, auth, валідація, ідемпотентність, moderation, зображення, час, події
+- `migrations/0001_init.sql` — схема D1; `wrangler.jsonc` — binding `DB` і змінні
 - `src/pages/api/` — REST-екшени (події, RSVP, коментарі, профіль, скарги)
 - `src/pages/events/`, `src/pages/invite/` — сторінки подій і запрошень
 - `src/components/` — React-острівці (форми) і Astro-компоненти
