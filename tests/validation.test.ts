@@ -253,12 +253,17 @@ test('довга назва події без пробілів не розтяг
   assert.match(detail, /min-w-0 order-2 lg:order-1/, 'grid-дитина має min-w-0, інакше min-width:auto розтягує трек');
 });
 
-test('гостьова картка коментарів: CTA з іконкою замість порожнього блоку', async () => {
+test('гостьова картка коментарів: сітка, ієрархія й CTA', async () => {
   const detail = await readFile(new URL('../src/components/site/EventDetail.astro', import.meta.url), 'utf8');
   const css = await readFile(new URL('../src/styles/global.css', import.meta.url), 'utf8');
   assert.match(detail, /class="cta-card p-6 sm:p-7"/, 'картка має окремий CTA-стиль');
-  assert.match(detail, /cta-card__icon[\s\S]{0,200}<svg/, 'іконка має бути SVG, не емодзі');
-  assert.match(detail, /pill pill--primary group self-start/, 'кнопка входу має бути головною дією');
+  assert.match(detail, /grid-cols-\[auto_minmax\(0,1fr\)\]/, 'на мобільному: іконка + контент');
+  assert.match(detail, /lg:grid-cols-\[auto_minmax\(0,1fr\)_auto\]/, 'на великих: іконка + контент + дія');
+  assert.match(detail, /<h2 class="eyebrow">Учасники/, 'секція учасників має заголовок другого рівня');
+  assert.match(detail, /<h2 class="eyebrow">Коментарі/, 'секція коментарів має заголовок другого рівня');
+  assert.match(detail, /<h3 class="mt-2 text-base font-medium leading-snug">/, 'назва в картці — заголовок третього рівня');
+  assert.match(detail, /cta-card__icon row-start-1 col-start-1/, 'іконка в першій колонці');
+  assert.match(detail, /pill pill--primary group col-span-2 row-start-2/, 'кнопка під контентом на мобільному');
   assert.match(css, /\.cta-card \{[^}]*radial-gradient/, 'фон картки має акцентний градієнт');
 });
 
