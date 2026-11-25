@@ -5,11 +5,9 @@ import AuthForm from '../components/site/AuthForm';
 import { loginSchema } from '../lib/validation.ts';
 import {
   authenticateUser,
-  checkLoginRateLimit,
   clearLoginFailures,
   clientKey,
   createSession,
-  LOGIN_LIMIT_MESSAGE,
   recordFailedLogin,
   setSessionCookie
 } from '../lib/auth.ts';
@@ -32,25 +30,18 @@ if (Astro.request.method === 'POST') {
 
   if (!error) {
     const limitKey = `login:${clientKey(Astro.request)}`;
-    const limit = await checkLoginRateLimit(limitKey);
-    if (!limit.allowed) {
-      error = LOGIN_LIMIT_MESSAGE;
-      Astro.response.status = 429;
-      Astro.response.headers.set('Retry-After', String(limit.retryAfter));
+    const parsed = loginSchema.safeParse({ email, password });
+    const user = parsed.success ? await authenticateUser(parsed.data.email, password) : null;
+    if (!user) {
+      await recordFailedLogin(limitKey);
+      error = 'Невірний email або пароль.';
+      Astro.response.status = 400;
     } else {
-      const parsed = loginSchema.safeParse({ email, password });
-      const user = parsed.success ? await authenticateUser(parsed.data.email, password) : null;
-      if (!user) {
-        await recordFailedLogin(limitKey);
-        error = 'Невірний email або пароль.';
-        Astro.response.status = 400;
-      } else {
-        await clearLoginFailures(limitKey);
-        const session = await createSession(user.id);
-        setSessionCookie(Astro.cookies, session.token);
-        const destination = next.startsWith('/') && !next.startsWith('//') ? next : '/';
-        return Astro.redirect(destination, 303);
-      }
+      await clearLoginFailures(limitKey);
+      const session = await createSession(user.id);
+      setSessionCookie(Astro.cookies, session.token);
+      const destination = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+      return Astro.redirect(destination, 303);
     }
   }
 }
