@@ -206,6 +206,29 @@ input[type="file"].field { padding: 0.55rem; }
   background: var(--card);
 }
 
+.cta-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--ring) 10%, transparent), transparent 55%),
+    var(--card);
+}
+
+.cta-card__icon {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--ring) 35%, var(--border));
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--ring) 10%, var(--card));
+  color: var(--ring);
+}
+
 .dots {
   background-image: radial-gradient(circle, color-mix(in srgb, var(--foreground) 16%, transparent) 1px, transparent 1px);
   background-size: 12px 12px;

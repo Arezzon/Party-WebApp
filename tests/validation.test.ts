@@ -253,6 +253,15 @@ test('довга назва події без пробілів не розтяг
   assert.match(detail, /min-w-0 order-2 lg:order-1/, 'grid-дитина має min-w-0, інакше min-width:auto розтягує трек');
 });
 
+test('гостьова картка коментарів: CTA з іконкою замість порожнього блоку', async () => {
+  const detail = await readFile(new URL('../src/components/site/EventDetail.astro', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  assert.match(detail, /class="cta-card p-6 sm:p-7"/, 'картка має окремий CTA-стиль');
+  assert.match(detail, /cta-card__icon[\s\S]{0,200}<svg/, 'іконка має бути SVG, не емодзі');
+  assert.match(detail, /pill pill--primary group self-start/, 'кнопка входу має бути головною дією');
+  assert.match(css, /\.cta-card \{[^}]*radial-gradient/, 'фон картки має акцентний градієнт');
+});
+
 test('створення події доступне тільки після await requireUser', async () => {
   const page = await readFile(new URL('../src/pages/events/new.astro', import.meta.url), 'utf8');
   assert.match(page, /await requireUser\(Astro\)/, 'перевірка сесії має бути асинхронною');
