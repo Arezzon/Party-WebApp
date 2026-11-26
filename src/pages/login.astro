@@ -9,6 +9,7 @@ import {
   clientKey,
   createSession,
   recordFailedLogin,
+  safeNextPath,
   setSessionCookie
 } from '../lib/auth.ts';
 
@@ -40,7 +41,7 @@ if (Astro.request.method === 'POST') {
       await clearLoginFailures(limitKey);
       const session = await createSession(user.id);
       setSessionCookie(Astro.cookies, session.token);
-      const destination = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+      const destination = safeNextPath(next, Astro.url.origin);
       return Astro.redirect(destination, 303);
     }
   }
@@ -52,7 +53,7 @@ if (Astro.request.method === 'POST') {
     client:load
     mode="login"
     error={error}
-    next={String(Astro.url.searchParams.get('next') ?? '')}
+    next={safeNextPath(Astro.url.searchParams.get('next'), Astro.url.origin)}
     notice={Astro.url.searchParams.get('registered') === '1' ? 'Акаунт створено. Увійдіть, будь ласка.' : ''}
   />
 </Layout>

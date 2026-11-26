@@ -10,7 +10,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import ./tests/setup-env.mjs --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.4.9",

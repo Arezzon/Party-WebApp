@@ -27,7 +27,7 @@ export default function AuthForm({ mode = 'login', error = '', notice = '', next
       </p>
 
       {(message || notice) && (
-        <div role="status" aria-live="polite" className={`notice mt-6 ${message ? 'notice--error' : 'notice--ok'}`}>
+        <div role={message ? 'alert' : 'status'} aria-live={message ? 'assertive' : 'polite'} className={`notice mt-6 ${message ? 'notice--error' : 'notice--ok'}`}>
           {message || notice}
         </div>
       )}

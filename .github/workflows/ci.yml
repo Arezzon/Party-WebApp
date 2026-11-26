@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - refactor/cloudflare-workers-d1
   pull_request:
     branches:
       - main

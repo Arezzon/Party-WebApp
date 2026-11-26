@@ -7,11 +7,17 @@ EVENT_ID="${EVENT_ID:-4999f0f5-4586-4c5a-ac83-4389f8d9ba12}"
 
 measure() {
   local label="$1" path="$2" limit="$3"
-  local total
+  local result
   local bust="cb=$(date +%s%N)"
   local sep='?'
   [[ "$path" == *'?'* ]] && sep='&'
-  total=$(curl -s -o /dev/null -w '%{time_total}' --max-time 15 "${BASE}${path}${sep}${bust}")
+  result=$(curl -s -o /dev/null -w '%{http_code} %{time_total}' --max-time 15 "${BASE}${path}${sep}${bust}")
+  local status="${result%% *}"
+  local total="${result##* }"
+  if [[ "$status" -lt 200 || "$status" -ge 300 ]]; then
+    echo "FAIL: $label повернув HTTP $status" >&2
+    return 1
+  fi
   local ms
   ms=$(python3 -c "print(int(float('$total')*1000))")
   printf '%-8s %5d ms (limit %d)\n' "$label" "$ms" "$limit"

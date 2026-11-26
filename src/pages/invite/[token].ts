@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { INVITE_TOKEN_RE, database, friendly, redirectTo } from './_check';
+import { SECURE_COOKIES } from '../../lib/env.ts';
 
 /** GET /invite/:token — 32 випадкові байти (64 hex), cookie invite_<eventId>, 303 на подію. */
 
@@ -19,6 +20,7 @@ export const GET: APIRoute = async ({ params, cookies, redirect }) => {
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
+    secure: SECURE_COOKIES,
     maxAge: 60 * 60 * 24 * 30
   });
 

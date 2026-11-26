@@ -503,9 +503,26 @@ export async function checkLoginRateLimit(key: string, now = Date.now()): Promis
 
 export function clientKey(request: Request | { headers?: Headers } | undefined): string {
   const headers = (request as any)?.headers;
-  const forwarded = typeof headers?.get === 'function' ? headers.get('x-forwarded-for') : null;
-  const ip = forwarded ? forwarded.split(',')[0].trim() : (typeof headers?.get === 'function' ? headers.get('x-real-ip') : null);
-  return ip || 'local';
+  const get = typeof headers?.get === 'function' ? (name: string) => headers.get(name) : () => null;
+  // Cloudflare sets CF-Connecting-IP; X-Forwarded-For is client-injectable, so never trust its first element.
+  const cf = get('cf-connecting-ip');
+  if (cf) return cf.trim();
+  const real = get('x-real-ip');
+  if (real) return real.trim();
+  return 'local';
+}
+
+/** Only same-origin absolute paths are safe redirect targets after login. */
+export function safeNextPath(value: unknown, base: string): string {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw.startsWith('/') || raw.startsWith('//') || raw.includes('\\')) return '/';
+  try {
+    const url = new URL(raw, base);
+    if (url.origin !== new URL(base).origin) return '/';
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return '/';
+  }
 }
 export const rateLimitKey = clientKey;
 

@@ -36,6 +36,7 @@
   --ring: #0066ff;
   --destructive: #b42318;
   --live: #0e9f72;
+  --live-text: #0b7d59;
 }
 
 .dark {
@@ -49,6 +50,7 @@
   --ring: #3b82f6;
   --destructive: #ff6b5e;
   --live: #52e5ab;
+  --live-text: #52e5ab;
 }
 
 * { border-color: var(--border); }
@@ -179,7 +181,6 @@ body {
 .field::placeholder { color: var(--muted-foreground); }
 .field:focus { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 16%, transparent); }
 textarea.field { min-height: 7rem; resize: vertical; line-height: 1.55; }
-select.field { appearance: none; background-image: none; }
 input[type="file"].field { padding: 0.55rem; }
 .field-label { display: flex; flex-direction: column; gap: 0.45rem; }
 .field-label > span:first-child {
@@ -242,7 +243,7 @@ input[type="file"].field { padding: 0.55rem; }
   font-size: 0.875rem;
 }
 .notice--error { border-color: color-mix(in srgb, var(--destructive) 35%, transparent); color: var(--destructive); background: color-mix(in srgb, var(--destructive) 6%, transparent); }
-.notice--ok { border-color: color-mix(in srgb, var(--live) 35%, transparent); color: var(--live); background: color-mix(in srgb, var(--live) 6%, transparent); }
+.notice--ok { border-color: color-mix(in srgb, var(--live) 35%, transparent); color: var(--live-text); background: color-mix(in srgb, var(--live) 6%, transparent); }
 
 /* ---------- nav ---------- */
 
@@ -285,8 +286,10 @@ input[type="file"].field { padding: 0.55rem; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
   background: var(--background);
@@ -297,12 +300,10 @@ input[type="file"].field { padding: 0.55rem; }
   .nav-link { min-height: 2.75rem; padding-left: 0.6rem; padding-right: 0.6rem; font-size: 0.8rem; }
   .nav-brand, .nav-sep { display: none; }
   .nav-pill { padding: 0.25rem; }
-  .nav-toggle { width: 2.5rem; height: 2.5rem; }
 }
 @media (max-width: 360px) {
   .nav-pill { gap: 0.15rem; padding: 0.2rem; }
   .nav-link { padding-left: 0.4rem; padding-right: 0.4rem; font-size: 0.76rem; }
-  .nav-toggle { width: 2.25rem; height: 2.25rem; }
 }
 
 /* ---------- data rows ---------- */

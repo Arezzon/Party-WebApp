@@ -11,12 +11,14 @@ interface Props {
 export default function ProfilePanel({ name, created, attending }: Props) {
   const [value, setValue] = useState(name);
   const [message, setMessage] = useState('');
+  const [isError, setIsError] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     setMessage('');
+    setIsError(false);
     try {
       const response = await fetch('/api/profile', {
         method: 'POST',
@@ -24,8 +26,11 @@ export default function ProfilePanel({ name, created, attending }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: value })
       });
-      setMessage(response.ok || response.status === 303 ? 'Ім’я збережено.' : 'Не вдалося зберегти ім’я.');
+      const ok = response.ok || response.status === 303;
+      setIsError(!ok);
+      setMessage(ok ? 'Ім’я збережено.' : 'Не вдалося зберегти ім’я.');
     } catch {
+      setIsError(true);
       setMessage('Помилка з’єднання. Спробуйте ще раз.');
     } finally {
       setSaving(false);
@@ -38,8 +43,12 @@ export default function ProfilePanel({ name, created, attending }: Props) {
     try {
       const response = await fetch('/api/profile/delete', { method: 'POST', credentials: 'same-origin' });
       if (response.ok || response.status === 303) window.location.assign('/');
-      else setMessage('Не вдалося видалити акаунт.');
+      else {
+        setIsError(true);
+        setMessage('Не вдалося видалити акаунт.');
+      }
     } catch {
+      setIsError(true);
       setMessage('Помилка з’єднання. Спробуйте ще раз.');
     } finally {
       setSaving(false);
@@ -57,7 +66,7 @@ export default function ProfilePanel({ name, created, attending }: Props) {
           </label>
           <button type="submit" className="pill pill--primary" disabled={saving}>Зберегти</button>
         </form>
-        {message && <p role="status" className="notice notice--ok mt-4">{message}</p>}
+        {message && <p role={isError ? 'alert' : 'status'} className={`notice mt-4 ${isError ? 'notice--error' : 'notice--ok'}`}>{message}</p>}
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <form method="post" action="/logout">
             <button type="submit" className="pill pill--ghost" disabled={saving}>Вийти з акаунта</button>
