@@ -170,7 +170,8 @@ test('зміна імені: 303, нове ім’я в БД і в знімка�
   const row: any = await d.prepare('SELECT name FROM users WHERE id = ?').get(user.id);
   assert.equal(row.name, 'Нове Ім’я');
   const comment: any = await d.prepare('SELECT author_name_snapshot FROM comments WHERE id = ?').get(commentId);
-  if (comment && 'author_name_snapshot' in comment) assert.equal(comment.author_name_snapshot, 'Нове Ім’я');
+  assert.ok(comment, 'коментар має існувати після зміни імені');
+  assert.equal(comment.author_name_snapshot, 'Нове Ім’я');
 
   const invalid = await updateProfile(makeCtx({
     method: 'POST', cookies: { session }, body: JSON.stringify({ name: '   ' }), url: 'http://localhost/api/profile'
@@ -213,8 +214,9 @@ test('видалення акаунта: сесія мертва, події/з�
   assert.equal(await d.prepare('SELECT id FROM comments WHERE id = ?').get(guestComment), undefined, 'коментарі на видаленій події каскадно зникли');
 
   const anonymized: any = await d.prepare('SELECT author_id, author_name_snapshot, body FROM comments WHERE id = ?').get(ownComment);
-  assert.equal(anonymized?.author_id, null, 'автор знеособлений');
-  if (anonymized && 'author_name_snapshot' in anonymized) assert.equal(anonymized.author_name_snapshot, 'Знайомець');
+  assert.ok(anonymized, 'коментар має лишитися після видалення автора');
+  assert.equal(anonymized.author_id, null, 'автор знеособлений');
+  assert.equal(anonymized.author_name_snapshot, 'Знайомець');
   assert.equal(anonymized?.body, 'Тестовий коментар');
 
   const afterDelete = await updateProfile(makeCtx({

@@ -54,7 +54,7 @@ cache-buster, бо інакше Cloudflare віддає стару закешо�
 | `SESSION_COOKIE_NAME` | `session` | Ім'я cookie |
 | `SESSION_TTL_DAYS` | `30` | Термін життя сесії |
 | `SECURE_COOKIES` | `false` | `true` тільки на HTTPS |
-| `MAX_UPLOAD_BYTES` | `10485760` | Ліміт multipart; Worker додатково обмежує обкладинку 1.5 МБ |
+| `MAX_UPLOAD_BYTES` | `1500000` | Ліміт multipart у коді; прод у `wrangler.jsonc` перевизначає на `1572864` (1.5 МБ) |
 | `MAX_LOGIN_ATTEMPTS` / `LOGIN_WINDOW_MS` | `10` / `60000` | Rate-limit логіну |
 | `MAX_EVENT_YEARS` | `2` | Максимальний горизонт дати події |
 | `MODERATOR_EMAILS` | `arsen@tusivka.local` | Email-и модераторів через кому; регістр не враховується |
@@ -64,7 +64,7 @@ cache-buster, бо інакше Cloudflare віддає стару закешо�
 ## Команди
 
 ```bash
-npm test          # 32 автотести (node:test)
+npm test          # 48 автотестів (node:test)
 npx astro check   # перевірка типів; має бути 0 errors
 npm run build     # продакшен-білд
 bash scripts/perf-check.sh  # заміри часу відповіді продових маршрутів
@@ -72,8 +72,8 @@ bash scripts/perf-check.sh  # заміри часу відповіді прод�
 
 ## CI/CD
 
-- `.github/workflows/ci.yml` — на push у `main`/`refactor/cloudflare-workers-d1` і на PR до `main`: `npm ci`, 32 тести, `astro check`, білд.
-- `.github/workflows/deploy.yml` — на push у `main` і вручну: білд, `wrangler d1 migrations apply tusivka --remote`, `wrangler deploy`.
+- `.github/workflows/ci.yml` — на push у `main` і на PR до `main`: `npm ci`, 48 тестів, `astro check`, білд.
+- `.github/workflows/deploy.yml` — деплой тільки після успішного CI на `main` (або вручну): білд, `wrangler d1 migrations apply tusivka --remote`, `wrangler deploy`.
 - `.github/workflows/codeql.yml` — щотижневий і PR-аналіз JS/TS на SQL-ін'єкції, XSS та інші патерни.
 - `.github/dependabot.yml` — щотижневі PR на оновлення npm-залежностей і GitHub Actions (група minor/patch разом).
 
@@ -99,7 +99,7 @@ bash scripts/perf-check.sh  # заміри часу відповіді прод�
 
 - Паролі: scrypt `salt:hash`; сесії в БД, HttpOnly/SameSite=Lax cookie; вихід інвалідує сесію.
 - CSRF: перевірка `Origin` на мутаціях; security-headers включно з `nosniff` і CSP.
-- Обкладинки: магічні байти, ≤10 MiB, перекодування в WebP, збереження в БД, filename ігнорується.
+- Обкладинки: магічні байти, ≤1.5 МБ, оригінальні байти без перекодування, збереження в БД, filename ігнорується.
 - Приватні події: 404 на сторінку/обкладинку/RSVP/коментар без інвайту; 32-байтовий токен.
 - ідемпотентність мутацій; гонка за останнє місце вирішується транзакцією.
 - Персональні дані: `/privacy`, `/rules`, редагування імені та видалення акаунта з каскадом і знеособленням коментарів.

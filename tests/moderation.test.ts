@@ -27,12 +27,12 @@ before(async () => {
 });
 
 test('роль модератора перевіряється з конфігурації без зміни БД', async () => {
-  assert.equal(await moderation.isModerator('arsen@tusivka.local'), true);
-  assert.equal(await moderation.isModerator('ARSEN@TUSIVKA.LOCAL'), true);
-  assert.equal(await moderation.isModerator('mod@example.test'), true);
-  assert.equal(await moderation.isModerator('maryna@tusivka.local'), false);
-  assert.equal(await moderation.isModerator(null), false);
-  assert.equal(await moderation.isModerator('arsen@tusivka.local', ['other@example.test']), false);
+  assert.equal(moderation.isModerator('arsen@tusivka.local'), true);
+  assert.equal(moderation.isModerator('ARSEN@TUSIVKA.LOCAL'), true);
+  assert.equal(moderation.isModerator('mod@example.test'), true);
+  assert.equal(moderation.isModerator('maryna@tusivka.local'), false);
+  assert.equal(moderation.isModerator(null), false);
+  assert.equal(moderation.isModerator('arsen@tusivka.local', ['other@example.test']), false);
 });
 
 test('дві скарги від одного користувача дають один запис', async () => {
